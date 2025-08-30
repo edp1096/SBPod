@@ -13,8 +13,20 @@ https://www.nexusmods.com/stellarblade/mods/1857
 make
 # or
 mingw32-make
+# or
+make dist
+# or
+mingw32-make dist
+```
+
+
+## Clean
+```powershell
+make clean
+# or
+mingw32-make clean
 ```
 
 
 ## Note
-* Build.cmd - Build then copy files to the mod folder in `Mod Organizer 2`.
+* Build.cmd - Compile then copy files to the mod folder in `Mod Organizer 2`.

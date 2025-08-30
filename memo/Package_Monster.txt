@@ -1,0 +1,74 @@
+Package when load event boss fight begin.
+
+앞에 `Package `는 빼야됨.
+.xxxxx_C를 붙여야 하나?
+
+
+Abaddon eidos7
+* CH_M_NA_39
+    * Package /Game/Art/Character/Monster/CH_M_NA_39/Blueprints/CH_M_NA_39_Seq_BP
+Corrupter eidos7
+* CH_M_NA_07
+    * Package /Game/Art/Character/Monster/CH_M_NA_07/Blueprints/CH_M_NA_07_02_Blueprint_Seq
+Gigas eidos7
+* CH_M_NA_05
+    * Package /Game/Art/Character/Monster/CH_M_NA_05/Blueprints/CH_M_NA_05_Blueprint_Seq
+Brute wasteland
+* CH_M_NA_43
+    * not good - Package /Game/Art/Character/Monster/CH_M_NA_43/Blueprints/CH_M_NA_43_Blueprint_Seq
+Gigas wasteland
+* CH_M_NA_05
+    * Package /Game/Art/Character/Monster/CH_M_NA_05/Blueprints/CH_M_NA_05_Blueprint_Seq
+Stalker matrix11
+* CH_M_NA_13
+    * Package /Game/Art/Character/Monster/CH_M_NA_13/BluePrints/CH_M_NA_13_Blueprint_Seq
+Juggernaut
+* CH_M_NA_15
+    * not good - Package /Game/Art/Character/Monster/CH_M_NA_15/BluePrints/CH_M_NA_15_Blueprint_Seq
+    * Package /Game/Art/Character/Monster/CH_M_NA_15/Animation/event/ME05_02_EliteNative_Entrance_NA15_005
+    * Package /Game/Art/Character/Monster/CH_M_NA_15/Animation/event/ME05_02_EliteNative_Entrance_NA15_01
+Tachy
+* CH_M_NA_21_Helmet
+    * Package /Game/Art/Character/Monster/CH_M_NA_21/Animation/event/ME06_01_Tachy_Entrance_NA_21_05
+    * Package /Game/Art/Character/Monster/CH_M_NA_21/Animation/event/ME06_01_Tachy_Entrance_NA_21_06
+Stalker great desert
+* CH_M_NA_13
+    * not good - Package /Game/Art/Character/Monster/CH_M_NA_13/BluePrints/CH_M_NA_13_TypeB_Blueprint_Seq
+Abaddon great desert
+* CH_M_NA_39
+    * Package /Game/Art/Character/Monster/CH_M_NA_39/Blueprints/CH_M_NA_39_TypeB_Blueprint_Seq
+Behemoth
+* CH_M_NA_46_Var01
+    * Package /Game/Art/Character/Monster/CH_M_NA_46/BluePrints/CH_M_NA_46_Var01_BluePrint_Seq
+Corrupter eidos9
+* CH_M_NA_07
+    * not good - Package /Game/Art/Character/Monster/CH_M_NA_07/Blueprints/CH_M_NA_07_Blueprint_Seq
+Belial
+* CH_M_NA_31
+    * Package /Game/Art/Character/Monster/CH_M_NA_31/Blueprints/CH_M_NA_31_Blueprint_seq
+Karakuri
+* CH_M_NA_26
+    * Package /Game/Art/Character/Monster/CH_M_NA_26/Blueprints/CH_M_NA_26_Seq_BP
+Democrawler
+* CH_M_NA_22
+    * not good - Package /Game/Art/Character/Monster/CH_M_NA_22/BluePrints/CH_M_NA_22_Blueprint_Seq
+Unidentified Naytiba
+* CH_M_NA_42_WingA
+    * not good - Package /Game/Art/Character/Monster/CH_M_NA_42/Blueprints/CH_M_NA_42_Blueprint
+Raven
+* CH_M_NA_53
+    * not good - Package /Game/Art/Character/Monster/CH_M_NA_53/Blueprints/CH_M_NA_53_Blueprint
+Providence
+* CH_M_NA_54
+    * Package /Game/Art/Character/Monster/CH_M_NA_54/Blueprints/CH_M_NA_54_Blueprint
+Enemy Adam ????
+* CH_M_NA_55
+Elder Naytiba
+* CH_M_NA_56
+    * Package /Game/Art/Character/Monster/CH_M_NA_56/Blueprints/CH_M_NA_56_BP_Seq
+Enemy Mann
+* CH_M_NA_901
+    * not good - Package /Game/Art/Character/Monster/CH_M_NA_901/Blueprints/CH_M_NA_901_Blueprint
+Scarlet
+* CH_M_NA_961
+    * not good - Package /Game/DLC_2/Art/Character/Monster/CH_M_NA_961/Blueprints/CH_M_NA_961_Blueprint

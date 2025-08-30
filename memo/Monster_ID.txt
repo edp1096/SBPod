@@ -1,0 +1,309 @@
+https://github.com/Stellar-Blade-Modding-Team/Stellar-Blade-Modding-Guide/wiki/ID's-Library
+
+
+Gardener[unused?]
+CH_M_NA_01
+
+Lion (No name)[unused?]
+CH_M_NA_02
+
+Lion (No name)[unused?]
+CH_M_NA_02
+
+Cricket Boomer
+CH_M_NA_0
+
+Cricket Slasher
+CH_M_NA_03
+
+Infant(No name)[unused?]
+Ch_M_NA_04
+
+Gigas
+CH_M_NA_05
+
+Gigas (Broken Head)
+CH_M_NA_05_Var01
+
+Tendril(No name)[unused?]
+CH_M_NA_06_test
+
+Corrupter
+CH_M_NA_07
+
+Dozer
+CH_M_NA_07_A
+
+Barnacle
+CH_M_NA_08
+
+Hydra
+CH_M_NA_09
+
+Mutated Hydra
+CH_M_NA_09
+
+Hydra
+CH_M_NA_09_TypeC
+
+Leviathan(No name)[unused?]
+CH_M_NA_10
+
+Creeper
+CH_M_NA_11
+
+Mutated Creeper
+CH_M_NA_11
+
+Creeper
+CH_M_NA_11_B
+
+Mite
+CH_M_NA_12
+
+Mutated Mite
+CH_M_NA_12_Var01
+
+Boarlet
+CH_M_NA_12_Var02
+
+Mutated Boarlet
+CH_M_NA_12_Var02
+
+Stalker
+CH_M_NA_13
+
+Skulling
+CH_M_NA_14
+
+Juggernaut
+CH_M_NA_15
+
+Skull Berserker
+CH_M_NA_16
+
+Skull Trooper
+CH_M_NA_17_1
+
+Skull Fighter
+CH_M_NA_17_1
+
+Skull Gunner
+CH_M_NA_19
+
+Machine Hive
+CH_M_NA_20
+
+CH_M_NA_20_B
+
+Enemy Tachy
+CH_M_NA_21_Helmet
+
+CH_M_NA_21_Cape
+
+CH_M_NA_21_Muffler
+
+CH_M_NA_21_RightWing
+
+CH_M_NA_21_Phase1_Body
+
+Democrawler
+CH_M_NA_22
+
+Houndborg
+CH_M_NA_23
+
+Sentryborg
+CH_M_NA_24
+
+Kokeshi
+CH_M_NA_25
+
+Karakuri
+CH_M_NA_26
+
+Guard Turret
+CH_M_NA_27
+
+CH_M_NA_27_TypeB
+
+CH_M_NA_27_TypeC
+
+Tentacle
+CH_M_NA_28
+
+Droid
+CH_M_NA_29_A_Armor
+
+CH_M_NA_29_B_Tentacle
+
+CH_M_NA_29_Base_Lower
+
+CH_M_NA_29_A_BaseExtra
+
+CH_M_NA_29_B_TentacleCore
+
+CH_M_NA_29_Base_Upper
+
+Heavy Droid
+CH_M_NA_29_A_Armor
+
+CH_M_NA_29_B_Tentacle
+
+CH_M_NA_29_Base_Lower
+
+CH_M_NA_29_A_BaseExtra
+
+CH_M_NA_29_B_TentacleCore
+
+CH_M_NA_29_Base_Upper
+
+Battle Droid
+CH_M_NA_29_B_Armor
+
+CH_M_NA_29_B_Tentacle
+
+CH_M_NA_29_Base_Lower
+
+CH_M_NA_29_B_MissileLauncher
+
+CH_M_NA_29_B_TentacleCore
+
+CH_M_NA_29_Base_Upper
+
+Broken Droid
+CH_M_NA_29_B_Tentacle
+
+CH_M_NA_29_B_TentacleCore
+
+CH_M_NA_29_Base_Upper
+
+Lump
+CH_M_NA_30
+
+Belial
+CH_M_NA_31
+
+CH_M_NA_31_Sword_A
+
+CH_M_NA_31
+
+CH_M_NA_31_Sword_B
+
+Aid Drone
+CH_M_NA_32
+
+Demogorgon
+CH_M_NA_33_Body
+
+Waster
+CH_M_NA_34
+
+Infector
+CH_M_NA_35
+
+Maelstrom
+CH_M_NA_36
+
+Defiler
+CH_M_NA_37
+
+Mutated Defiler
+CH_M_NA_37_B
+
+Abaddon
+CH_M_NA_39_Sword_R
+
+CH_M_NA_39
+
+Guardian
+CH_M_NA_40
+
+Heavy Guardian
+CH_M_NA_40_B
+
+Cannon Guardian
+CH_M_NA_40_C
+
+Test Subject
+CH_M_NA_41
+
+Unidentified Naytiba
+CH_M_NA_42_WingA
+
+CH_M_NA_42_WingB
+
+CH_M_NA_42
+
+Brute
+CH_M_NA_43
+
+Hedgeboar
+CH_M_NA_44
+
+CH_M_NA_44_B
+
+Lurker
+CH_M_NA_45
+
+Lesser Behemoth
+CH_M_NA_46
+
+Behemoth
+CH_M_NA_46_Var01
+
+Lesser Lurker
+CH_M_NA_47
+
+Turret Droid
+CH_M_NA_48
+
+Old Droid
+CH_M_NA_49
+
+Beholder
+CH_M_NA_51
+
+Thornhead
+CH_M_NA_52
+
+Raven
+CH_M_NA_53_Facial
+
+CH_M_NA_53_Hair
+
+CH_M_NA_53
+
+Providence
+CH_M_NA_54
+
+Enemy Adam
+CH_M_NA_55_Face
+
+CH_M_NA_55
+
+Elder Naytiba
+CH_M_NA_56
+
+Cocoon
+CH_M_NA_57
+
+VipGuard(No name)
+CH_P_EVE_Face_003
+
+CH_M_NA_58
+
+Enemy Mann
+CH_NPC_Mann_BossWP_04
+
+CH_NPC_Mann_Body
+
+Quiel
+CH_NPC_Rael_Face
+
+CH_NPC_Rael_Body
+
+Scarlet
+CH_M_NA_961_Facial
+
+CH_M_NA_961

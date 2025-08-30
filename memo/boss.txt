@@ -1,0 +1,48 @@
+SceneComponent 식별 안돼서 버림.
+
+
+
+
+abaddon
+
+시작
+Package /Game/Art/Character/Monster/CH_M_NA_39/Blueprints/CH_M_NA_39_Seq_BP
+Function /Game/Art/Character/Monster/CH_M_NA_39/Blueprints/CH_M_NA_39_Seq_BP.CH_M_NA_39_Seq_BP_C:UserConstructionScript
+
+끝 (아님)
+Package /Game/GameDesign/Level/Theater/DrownedEidosDistrict/DED01/Theaters/MV_DED_BossChallenge_Opener_Finish_QTE
+Function /Game/Art/UI/Widget/Theater/WB_Theater_InputCounter_FlowPress_Button.WB_Theater_InputCounter_FlowPress_Button_C:EventNotification
+
+
+월드 스테이지 입장?
+World /Game/Art/BG/WorldMap/SubLevel/F02/F02_LD_Opener.F02_LD_Opener
+
+
+
+보스 스테이지 입장 ~ 보스전 도중 또는 끝날때 사라짐
+아바돈
+시작
+SceneComponent /Game/Art/Character/Monster/CH_M_NA_39/Blueprints/CH_M_NA_39_Seq_BP.CH_M_NA_39_Seq_BP_C:DefaultSceneRoot_GEN_VARIABLE
+SceneComponent /Game/Art/BG/WorldMap/Level_P/F02.F02:PersistentLevel.MV_DED01_EliteNative_Entrance_Master_2C492BD349729C494C513EBFE20A1FFA.SceneComp
+종료
+SceneComponent /Game/Art/BG/WorldMap/Level_P/F02.F02:PersistentLevel.EnvObj_DED01_Opener_Phase2FxSeq_2147474761.SceneComp
+SceneComponent /Game/Art/BG/WorldMap/Level_P/F02.F02:PersistentLevel.MV_DED_BossChallenge_Opener_Finish_Master_9D488CDD4F113A6A6E7991887BA34368.SceneComp
+
+K2_DestroyComponent ??
+
+
+커럽터
+SceneComponent /Game/Art/Character/Monster/CH_M_NA_07/Blueprints/CH_M_NA_07_02_Blueprint_Seq.CH_M_NA_07_02_Blueprint_Seq_C:DefaultSceneRoot_GEN_VARIABLE
+
+
+
+RF_Public | RF_Transactional | RF_ArchetypeObject | RF_WasLoaded | RF_LoadCompleted | RF_AllFlags
+
+
+_Seq_BP_C:DefaultSceneRoot_GEN_VARIABLE
+
+보스전 종료 직전, QTE 시작 시점
+BlueprintGeneratedClass /Game/GameDesign/Level/Theater/DrownedEidosDistrict/DED01/LevelSeq/MV_DED01_Parkinglot_AfterBattle_QTE_Success.SequenceDirector_C
+BlueprintGeneratedClass /Game/GameDesign/Level/Theater/DrownedEidosDistrict/DED02/LevelSeq/MV_DED02_Elite_GrubShooterFinish_Success.SequenceDirector_C
+BlueprintGeneratedClass /Game/GameDesign/Level/Theater/Matrix/MatrixXI/ME03/LevelSeq/MV_ME03_EliteNative_Finish_Success_BossChallenge.SequenceDirector_C
+BlueprintGeneratedClass /Game/GameDesign/Level/Theater/WasteLandA/WLA10/LevelSeq/MV_Nest_RavenBattle_After_QTE_success_BossChallenge.SequenceDirector_C
