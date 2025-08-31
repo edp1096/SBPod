@@ -1,11 +1,12 @@
 /*
- * lua_audio.c - Lua용 오디오 래퍼 DLL
+ * lua_audio.c - Lua Audio Wrapper DLL with Callback Support
  *
- * 컴파일: gcc -shared -o lua_audio.dll lua_audio.c .\stb_vorbis.c -I"lua/include" -L"lua/lib" -llua54 -lwinmm -lole32
+ * Compile: gcc -shared -o lua_audio.dll lua_audio.c .\stb_vorbis.c -I"lua/include" -L"lua/lib" -llua54 -lwinmm -lole32
  *
- * Lua 사용법:
+ * Lua Usage:
  * local audio = require("lua_audio")
  * audio.init()
+ * audio.setEndCallback(function() print("Music ended!") end)
  * local sound = audio.load("guitar.ogg")
  * sound:play()
  */
@@ -23,7 +24,7 @@
 #include "lua.h"
 #include "miniaudio.h"
 
-// util.c 함수들 extern 선언
+// External function declarations from util.c
 extern int l_sleep(lua_State* L);
 extern int l_msleep(lua_State* L);
 extern int l_kbhit(lua_State* L);
@@ -34,22 +35,46 @@ extern int l_tick(lua_State* L);
 extern int l_yield(lua_State* L);
 extern void create_key_constants(lua_State* L);
 
-// 파일시스템 함수들
+// Filesystem functions
 extern int l_scan_music_files(lua_State* L);
 extern int l_file_exists(lua_State* L);
 extern int l_dir_exists(lua_State* L);
 
-// 전역 오디오 엔진
+// Global audio engine
 static ma_engine* g_engine = NULL;
 static int g_initialized = 0;
 
-// 사운드 핸들 구조체 (Lua userdata용)
+// Global Lua state and callback reference for end callback
+static lua_State* g_lua_state = NULL;
+static int g_end_callback_ref = LUA_NOREF;
+
+// Sound handle structure for Lua userdata
 typedef struct {
     ma_sound* sound;
     int is_valid;
+    lua_State* L;  // Store Lua state for callback
 } LuaSound;
 
-// 오디오 시스템 초기화
+// Sound end callback function - called when sound finishes playing
+static void sound_end_callback(void* pUserData, ma_sound* pSound) {
+    (void)pUserData;  // Unused parameter
+    (void)pSound;     // Unused parameter
+
+    if (g_lua_state && g_end_callback_ref != LUA_NOREF) {
+        // Get the callback function from registry
+        lua_rawgeti(g_lua_state, LUA_REGISTRYINDEX, g_end_callback_ref);
+
+        // Call the Lua callback function
+        if (lua_pcall(g_lua_state, 0, 0, 0) != LUA_OK) {
+            // If there's an error, print it but don't crash
+            const char* error = lua_tostring(g_lua_state, -1);
+            printf("Audio callback error: %s\n", error);
+            lua_pop(g_lua_state, 1);  // Remove error from stack
+        }
+    }
+}
+
+// Initialize audio system
 static int l_audio_init(lua_State* L) {
     if (g_initialized) {
         lua_pushboolean(L, 1);
@@ -71,12 +96,14 @@ static int l_audio_init(lua_State* L) {
         return 2;
     }
 
+    // Store Lua state for callbacks
+    g_lua_state = L;
     g_initialized = 1;
     lua_pushboolean(L, 1);
     return 1;
 }
 
-// 오디오 시스템 종료
+// Shutdown audio system
 static int l_audio_shutdown(lua_State* L) {
     if (g_initialized && g_engine) {
         ma_engine_uninit(g_engine);
@@ -84,10 +111,50 @@ static int l_audio_shutdown(lua_State* L) {
         g_engine = NULL;
         g_initialized = 0;
     }
+
+    // Clear callback reference
+    if (g_end_callback_ref != LUA_NOREF) {
+        luaL_unref(L, LUA_REGISTRYINDEX, g_end_callback_ref);
+        g_end_callback_ref = LUA_NOREF;
+    }
+    g_lua_state = NULL;
+
     return 0;
 }
 
-// 음악 파일 로드
+// Set end callback function - called when any sound finishes
+static int l_audio_set_end_callback(lua_State* L) {
+    // Check if parameter is a function
+    if (!lua_isfunction(L, 1)) {
+        lua_pushboolean(L, 0);
+        lua_pushstring(L, "Parameter must be a function");
+        return 2;
+    }
+
+    // Clear previous callback if exists
+    if (g_end_callback_ref != LUA_NOREF) {
+        luaL_unref(L, LUA_REGISTRYINDEX, g_end_callback_ref);
+    }
+
+    // Store new callback in registry
+    lua_pushvalue(L, 1);  // Copy function to top of stack
+    g_end_callback_ref = luaL_ref(L, LUA_REGISTRYINDEX);
+
+    lua_pushboolean(L, 1);
+    return 1;
+}
+
+// Clear end callback
+static int l_audio_clear_end_callback(lua_State* L) {
+    if (g_end_callback_ref != LUA_NOREF) {
+        luaL_unref(L, LUA_REGISTRYINDEX, g_end_callback_ref);
+        g_end_callback_ref = LUA_NOREF;
+    }
+    lua_pushboolean(L, 1);
+    return 1;
+}
+
+// Load music file
 static int l_audio_load(lua_State* L) {
     const char* filename = luaL_checkstring(L, 1);
 
@@ -97,16 +164,17 @@ static int l_audio_load(lua_State* L) {
         return 2;
     }
 
-    // LuaSound userdata 생성
+    // Create LuaSound userdata
     LuaSound* lua_sound = (LuaSound*)lua_newuserdata(L, sizeof(LuaSound));
     lua_sound->sound = NULL;
     lua_sound->is_valid = 0;
+    lua_sound->L = L;
 
-    // 메타테이블 설정
+    // Set metatable
     luaL_getmetatable(L, "LuaSound");
     lua_setmetatable(L, -2);
 
-    // ma_sound 생성
+    // Create ma_sound
     lua_sound->sound = malloc(sizeof(ma_sound));
     if (!lua_sound->sound) {
         lua_pushnil(L);
@@ -114,7 +182,7 @@ static int l_audio_load(lua_State* L) {
         return 2;
     }
 
-    // 파일 로드
+    // Load file with end callback
     if (ma_sound_init_from_file(g_engine, filename, 0, NULL, NULL, lua_sound->sound) != MA_SUCCESS) {
         free(lua_sound->sound);
         lua_sound->sound = NULL;
@@ -123,11 +191,14 @@ static int l_audio_load(lua_State* L) {
         return 2;
     }
 
+    // Set end callback for this sound
+    ma_sound_set_end_callback(lua_sound->sound, sound_end_callback, NULL);
+
     lua_sound->is_valid = 1;
     return 1;
 }
 
-// 간단한 파일 재생 (원샷)
+// Simple file playback (one-shot)
 static int l_audio_play_file(lua_State* L) {
     const char* filename = luaL_checkstring(L, 1);
 
@@ -142,7 +213,7 @@ static int l_audio_play_file(lua_State* L) {
     return 1;
 }
 
-// 사운드 재생
+// Play sound
 static int l_sound_play(lua_State* L) {
     LuaSound* lua_sound = (LuaSound*)luaL_checkudata(L, 1, "LuaSound");
 
@@ -156,7 +227,7 @@ static int l_sound_play(lua_State* L) {
     return 1;
 }
 
-// 사운드 정지
+// Stop sound
 static int l_sound_stop(lua_State* L) {
     LuaSound* lua_sound = (LuaSound*)luaL_checkudata(L, 1, "LuaSound");
 
@@ -170,7 +241,7 @@ static int l_sound_stop(lua_State* L) {
     return 1;
 }
 
-// 볼륨 설정
+// Set volume
 static int l_sound_set_volume(lua_State* L) {
     LuaSound* lua_sound = (LuaSound*)luaL_checkudata(L, 1, "LuaSound");
     float volume = (float)luaL_checknumber(L, 2);
@@ -188,7 +259,7 @@ static int l_sound_set_volume(lua_State* L) {
     return 1;
 }
 
-// 재생 상태 확인
+// Check if sound is playing
 static int l_sound_is_playing(lua_State* L) {
     LuaSound* lua_sound = (LuaSound*)luaL_checkudata(L, 1, "LuaSound");
 
@@ -202,7 +273,7 @@ static int l_sound_is_playing(lua_State* L) {
     return 1;
 }
 
-// 루프 설정
+// Set looping
 static int l_sound_set_looping(lua_State* L) {
     LuaSound* lua_sound = (LuaSound*)luaL_checkudata(L, 1, "LuaSound");
     int loop = lua_toboolean(L, 2);
@@ -217,7 +288,45 @@ static int l_sound_set_looping(lua_State* L) {
     return 1;
 }
 
-// LuaSound 가비지 컬렉션
+// Get sound length in seconds
+static int l_sound_get_length(lua_State* L) {
+    LuaSound* lua_sound = (LuaSound*)luaL_checkudata(L, 1, "LuaSound");
+
+    if (!lua_sound->is_valid || !lua_sound->sound) {
+        lua_pushnumber(L, 0);
+        return 1;
+    }
+
+    float length_in_seconds;
+    if (ma_sound_get_length_in_seconds(lua_sound->sound, &length_in_seconds) != MA_SUCCESS) {
+        lua_pushnumber(L, 0);
+        return 1;
+    }
+
+    lua_pushnumber(L, (double)length_in_seconds);
+    return 1;
+}
+
+// Get current playback position in seconds
+static int l_sound_get_position(lua_State* L) {
+    LuaSound* lua_sound = (LuaSound*)luaL_checkudata(L, 1, "LuaSound");
+
+    if (!lua_sound->is_valid || !lua_sound->sound) {
+        lua_pushnumber(L, 0);
+        return 1;
+    }
+
+    float position_in_seconds;
+    if (ma_sound_get_cursor_in_seconds(lua_sound->sound, &position_in_seconds) != MA_SUCCESS) {
+        lua_pushnumber(L, 0);
+        return 1;
+    }
+
+    lua_pushnumber(L, (double)position_in_seconds);
+    return 1;
+}
+
+// LuaSound garbage collection
 static int l_sound_gc(lua_State* L) {
     LuaSound* lua_sound = (LuaSound*)luaL_checkudata(L, 1, "LuaSound");
 
@@ -243,15 +352,17 @@ static int l_sound_tostring(lua_State* L) {
     return 1;
 }
 
-// 오디오 모듈 함수들 (audio와 util 함수 모두 포함)
+// Audio module functions (includes both audio and util functions)
 static const luaL_Reg audiolib[] = {
-    // Audio 함수들
+    // Audio functions
     {"init", l_audio_init},
     {"shutdown", l_audio_shutdown},
     {"load", l_audio_load},
     {"playFile", l_audio_play_file},
+    {"setEndCallback", l_audio_set_end_callback},
+    {"clearEndCallback", l_audio_clear_end_callback},
 
-    // Util 함수들 (util.c에서 가져옴)
+    // Util functions (from util.c)
     {"sleep", l_sleep},
     {"msleep", l_msleep},
     {"kbhit", l_kbhit},
@@ -261,25 +372,27 @@ static const luaL_Reg audiolib[] = {
     {"tick", l_tick},
     {"yield", l_yield},
 
-    // 파일시스템 함수들
-    {"scanMusicFiles", l_scan_music_files},  // 음악 파일 스캔
-    {"fileExists", l_file_exists},           // 파일 존재 확인
-    {"dirExists", l_dir_exists},             // 디렉토리 존재 확인
+    // Filesystem functions
+    {"scanMusicFiles", l_scan_music_files},
+    {"fileExists", l_file_exists},
+    {"dirExists", l_dir_exists},
 
     {NULL, NULL}};
 
-// LuaSound 메타메서드들
+// LuaSound metamethods
 static const luaL_Reg sound_meta[] = {
     {"play", l_sound_play},
     {"stop", l_sound_stop},
     {"setVolume", l_sound_set_volume},
     {"isPlaying", l_sound_is_playing},
     {"setLooping", l_sound_set_looping},
+    {"getLength", l_sound_get_length},
+    {"getPosition", l_sound_get_position},
     {"__gc", l_sound_gc},
     {"__tostring", l_sound_tostring},
     {NULL, NULL}};
 
-// 모듈 초기화 함수
+// Module initialization function
 #if defined(_WIN32)
 #if defined(_MSC_VER) || defined(__MINGW64__)
 __declspec(dllexport)
@@ -287,21 +400,21 @@ __declspec(dllexport)
 #endif
 int
 luaopen_audio(lua_State* L) {
-    // LuaSound 메타테이블 생성
+    // Create LuaSound metatable
     luaL_newmetatable(L, "LuaSound");
     lua_pushvalue(L, -1);
-    lua_setfield(L, -2, "__index");  // 메타테이블을 자기 자신의 __index로 설정
+    lua_setfield(L, -2, "__index");  // Set metatable as its own __index
     luaL_setfuncs(L, sound_meta, 0);
     lua_pop(L, 1);
 
-    // 오디오 모듈 테이블 생성 (util 함수들도 포함)
+    // Create audio module table (includes util functions)
     luaL_newlib(L, audiolib);
 
-    // 키 상수 추가 (util.c에서 가져옴)
+    // Add key constants (from util.c)
     create_key_constants(L);
 
-    // 버전 정보
-    lua_pushstring(L, "1.0");
+    // Version information
+    lua_pushstring(L, "1.1");
     lua_setfield(L, -2, "version");
 
     return 1;

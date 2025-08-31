@@ -1,5 +1,5 @@
 local is_debug = false
--- local is_debug = true
+
 local function dprint(msg)
     if is_debug then
         print("[SBPod] " .. msg .. "\n")
@@ -11,6 +11,7 @@ local audio = require("audio")
 local ini = require("ini")
 
 local sound = nil
+local manual_stop = false
 
 local default_volume = 0.1
 local current_volume = default_volume
@@ -30,10 +31,14 @@ if not cfg then
 end
 if cfg == nil then return end
 
-if cfg.WorkingMode == "debug" then is_debug = true end
 music_dir = cfg.MusicPath.Default
 current_volume = cfg.VolumePercent * max_volume / 100
-if current_volume > max_volume then current_volume = max_volume end
+if current_volume > max_volume then
+    current_volume = max_volume
+end
+if cfg.WorkingMode == "debug" then
+    is_debug = true
+end
 
 
 function GetMusicFiles()
@@ -54,7 +59,6 @@ function GetMusicFiles()
 end
 
 local function playMusic(music_file)
-    -- audio.init()
     sound = audio.load(music_file)
     if not sound then
         dprint("Failed to load " .. music_file)
@@ -69,11 +73,11 @@ end
 
 local function stopMusic()
     if not sound then return false end
-    -- sound:stop()
 
     local fadeout_volume = current_volume
     local volume_down_step = current_volume / 50
 
+    -- Fadeout effect
     while fadeout_volume > 0.0 do
         fadeout_volume = fadeout_volume - volume_down_step
         if fadeout_volume < 0.0 then fadeout_volume = 0.0 end
@@ -83,11 +87,9 @@ local function stopMusic()
 
     sound:stop()
     sound = nil
-    -- audio.shutdown()
 
     dprint("Music is stopped " .. music_files[current_music_index])
 end
-
 
 local function playShuffle()
     dprint("Shuffling music")
@@ -105,6 +107,30 @@ local function playShuffle()
     playMusic(music_file)
 end
 
+local function togglePlay()
+    if sound and sound:isPlaying() then
+        dprint("Stop music")
+        manual_stop = true
+        ExecuteAsync(function() stopMusic() end)
+    else
+        dprint("Play music")
+        manual_stop = false
+        ExecuteAsync(function() playShuffle() end)
+    end
+end
+
+local function onMusicEnded()
+    dprint("Music ended callback triggered")
+
+    if not manual_stop and #music_files > 0 then
+        ExecuteAsync(function()
+            audio.msleep(500)
+            playShuffle()
+        end)
+    end
+end
+
+
 function GetMapName()
     local map_name = "Unknown Map"
 
@@ -116,37 +142,7 @@ function GetMapName()
     return map_name
 end
 
-RegisterKeyBind(0xBD, function()
-    dprint("Minus key pressed")
-    current_volume = current_volume - 0.005
-    if current_volume < 0.0 then current_volume = 0.0 end
-    ExecuteAsync(function()
-        dprint("Volume: " .. math.floor(current_volume / max_volume * 100) .. "% / " .. current_volume)
-        sound:setVolume(current_volume)
-        audio.beep(400, 50)
-    end)
-end)
-RegisterKeyBind(0xBB, function()
-    dprint("Equal key pressed")
-    current_volume = current_volume + 0.005
-    if current_volume > max_volume then current_volume = max_volume end
-    ExecuteAsync(function()
-        dprint("Volume: " .. math.floor(current_volume / max_volume * 100) .. "% / " .. current_volume)
-        sound:setVolume(current_volume)
-        audio.beep(800, 50)
-    end)
-end)
-RegisterKeyBind(Key.DEL, function()
-    dprint("Del key pressed")
-
-    if sound and sound:isPlaying() then
-        ExecuteAsync(function() stopMusic() end)
-    else
-        ExecuteAsync(function() playShuffle() end)
-    end
-end)
-
-
+-- Package checking for game state
 local pkgs = {
     "/Game/Art/Character/Monster/CH_M_NA_39/Blueprints/CH_M_NA_39_Seq_BP",
     "/Game/Art/Character/Monster/CH_M_NA_07/Blueprints/CH_M_NA_07_02_Blueprint_Seq",
@@ -172,16 +168,10 @@ local pkgs = {
 }
 
 local function checkPackage()
-    -- Abaddon
-    -- local pkg = StaticFindObject(
-    --     "/Game/Art/Character/Monster/CH_M_NA_39/Blueprints/CH_M_NA_39_Seq_BP.CH_M_NA_39_Seq_BP_C")
-    -- local pkg = StaticFindObject(
-    --     "/Game/GameDesign/Level/Theater/DrownedEidosDistrict/DED01/LevelSeq/MV_DED01_Parkinglot_AfterBattle_QTE_Success.SequenceDirector_C")
     local pkg = StaticFindObject(
         "/Game/Art/Character/Monster/CH_M_NA_05/Blueprints/CH_M_NA_05_Blueprint_Seq.CH_M_NA_05_Blueprint_Seq_C")
 
     if not pkg or not pkg:IsValid() then
-        -- dprint("Package not found")
         ExecuteWithDelay(1500, checkPackage)
         return false
     end
@@ -190,28 +180,65 @@ local function checkPackage()
     return true
 end
 
-
-RegisterHook("/Script/Engine.PlayerController:ClientSetHUD", function(ctx)
-    dprint("ClientSetHUD") -- 이건 ClientRestart 보다 먼저 떠버리노
+-- Key bindings for volume control and playback
+RegisterKeyBind(0xBD, function() -- Minus key
+    dprint("Minus key pressed")
+    current_volume = current_volume - 0.005
+    if current_volume < 0.0 then current_volume = 0.0 end
+    ExecuteAsync(function()
+        dprint("Volume: " .. math.floor(current_volume / max_volume * 100) .. "% / " .. current_volume)
+        if sound then sound:setVolume(current_volume) end
+        audio.beep(400, 50)
+    end)
 end)
+
+RegisterKeyBind(0xBB, function() -- Equal key (Plus)
+    dprint("Equal key pressed")
+    current_volume = current_volume + 0.005
+    if current_volume > max_volume then current_volume = max_volume end
+    ExecuteAsync(function()
+        dprint("Volume: " .. math.floor(current_volume / max_volume * 100) .. "% / " .. current_volume)
+        if sound then sound:setVolume(current_volume) end
+        audio.beep(800, 50)
+    end)
+end)
+
+RegisterKeyBind(Key.DEL, function()
+    dprint("Del key pressed")
+    togglePlay()
+end)
+
+
+-- Game event hooks
+RegisterHook("/Script/Engine.PlayerController:ClientSetHUD", function(ctx)
+    dprint("ClientSetHUD")
+end)
+
 ExecuteWithDelay(5000, function()
     RegisterHook("/Script/Engine.PlayerController:ClientRestart", function(ctx)
+        if manual_stop then return end
+
         dprint("Restarting music " .. ctx:get():GetFullName())
 
         local mapName = GetMapName()
         dprint("Target map name: " .. mapName)
 
-        is_music_delayed_start = false
-        -- if not string.find(mapName, "CH_P_EVE_01_Blueprint_C /Game/Lobby/Lobby.LOBBY") then
-        if string.find(mapName, "CH_P_EVE_01_Blueprint_C /Game/Art/BG/WorldMap/") then
+        local stage_time_append = 3800
+        if string.find(mapName, "CH_P_EVE_01_Blueprint_C /Game/Lobby/Lobby.LOBBY") then
+            dprint("Move to Lobby")
+            stage_time_append = 180
+        elseif string.find(mapName, "CH_P_EVE_01_Blueprint_C /Game/Art/BG/WorldMap/") then
             dprint("Move to Stage")
-            is_music_delayed_start = true
+        else
+            dprint("Unknown map")
         end
 
         ExecuteAsync(function()
-            stopMusic()
-            audio.msleep(2000)
+            manual_stop = true
+            audio.msleep(stage_time_append)
+            if sound then stopMusic() end
             playShuffle()
+            manual_stop = false
 
             checkPackage()
         end)
@@ -221,8 +248,16 @@ end)
 
 local function setupMod()
     audio.init()
+    audio.setEndCallback(onMusicEnded)
     music_files = GetMusicFiles()
-    ExecuteWithDelay(180, function() playShuffle() end)
+
+    ExecuteWithDelay(180, function()
+        if #music_files > 0 then
+            playShuffle()
+        else
+            dprint("No music files found in " .. music_dir)
+        end
+    end)
 end
 
 print("[SBPod] is loaded\n")
