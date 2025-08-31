@@ -3,6 +3,12 @@ local is_debug = false
 local function dprint(msg)
     if is_debug then
         print("[SBPod] " .. msg .. "\n")
+
+        local log_file = io.open("ue4ss/Mods/SBPod/debug.log", "a")
+        if not log_file then return end
+        -- print time instead of SBPod
+        log_file:write(os.date("%Y-%m-%d %H:%M:%S") .. " " .. msg .. "\n")
+        log_file:close()
     end
 end
 
@@ -38,6 +44,9 @@ if current_volume > max_volume then
 end
 if cfg.WorkingMode == "debug" then
     is_debug = true
+
+    local log_file = io.open("ue4ss/Mods/SBPod/debug.log", "w")
+    if log_file then log_file:close() end
 end
 
 
@@ -97,6 +106,7 @@ local function playShuffle()
     while previous_music_index == current_music_index do
         if #music_files == 0 then return end
         current_music_index = math.random(#music_files)
+        if #music_files == 1 then return end
     end
     previous_music_index = current_music_index
 
@@ -142,30 +152,30 @@ function GetMapName()
     return map_name
 end
 
--- Package checking for game state
-local pkgs = {
-    "/Game/Art/Character/Monster/CH_M_NA_39/Blueprints/CH_M_NA_39_Seq_BP",
-    "/Game/Art/Character/Monster/CH_M_NA_07/Blueprints/CH_M_NA_07_02_Blueprint_Seq",
-    "/Game/Art/Character/Monster/CH_M_NA_05/Blueprints/CH_M_NA_05_Blueprint_Seq",
-    "/Game/Art/Character/Monster/CH_M_NA_43/Blueprints/CH_M_NA_43_Blueprint_Seq",
-    "/Game/Art/Character/Monster/CH_M_NA_05/Blueprints/CH_M_NA_05_Blueprint_Seq",
-    "/Game/Art/Character/Monster/CH_M_NA_13/BluePrints/CH_M_NA_13_Blueprint_Seq",
-    "/Game/Art/Character/Monster/CH_M_NA_15/Animation/event/ME05_02_EliteNative_Entrance_NA15_01",
-    "/Game/Art/Character/Monster/CH_M_NA_21/Animation/event/ME06_01_Tachy_Entrance_NA_21_05",
-    "/Game/Art/Character/Monster/CH_M_NA_13/BluePrints/CH_M_NA_13_TypeB_Blueprint_Seq",
-    "/Game/Art/Character/Monster/CH_M_NA_39/Blueprints/CH_M_NA_39_TypeB_Blueprint_Seq",
-    "/Game/Art/Character/Monster/CH_M_NA_46/BluePrints/CH_M_NA_46_Var01_BluePrint_Seq",
-    "/Game/Art/Character/Monster/CH_M_NA_07/Blueprints/CH_M_NA_07_Blueprint_Seq",
-    "/Game/Art/Character/Monster/CH_M_NA_31/Blueprints/CH_M_NA_31_Blueprint_seq",
-    "/Game/Art/Character/Monster/CH_M_NA_26/Blueprints/CH_M_NA_26_Seq_BP",
-    "/Game/Art/Character/Monster/CH_M_NA_22/BluePrints/CH_M_NA_22_Blueprint_Seq",
-    "/Game/Art/Character/Monster/CH_M_NA_42/Blueprints/CH_M_NA_42_Blueprint",
-    "/Game/Art/Character/Monster/CH_M_NA_53/Blueprints/CH_M_NA_53_Blueprint",
-    "/Game/Art/Character/Monster/CH_M_NA_54/Blueprints/CH_M_NA_54_Blueprint",
-    "/Game/Art/Character/Monster/CH_M_NA_56/Blueprints/CH_M_NA_56_BP_Seq",
-    "/Game/Art/Character/Monster/CH_M_NA_901/Blueprints/CH_M_NA_901_Blueprint",
-    "/Game/DLC_2/Art/Character/Monster/CH_M_NA_961/Blueprints/CH_M_NA_961_Blueprint",
-}
+-- -- Package checking for game state
+-- local pkgs = {
+--     "/Game/Art/Character/Monster/CH_M_NA_39/Blueprints/CH_M_NA_39_Seq_BP",
+--     "/Game/Art/Character/Monster/CH_M_NA_07/Blueprints/CH_M_NA_07_02_Blueprint_Seq",
+--     "/Game/Art/Character/Monster/CH_M_NA_05/Blueprints/CH_M_NA_05_Blueprint_Seq",
+--     "/Game/Art/Character/Monster/CH_M_NA_43/Blueprints/CH_M_NA_43_Blueprint_Seq",
+--     "/Game/Art/Character/Monster/CH_M_NA_05/Blueprints/CH_M_NA_05_Blueprint_Seq",
+--     "/Game/Art/Character/Monster/CH_M_NA_13/BluePrints/CH_M_NA_13_Blueprint_Seq",
+--     "/Game/Art/Character/Monster/CH_M_NA_15/Animation/event/ME05_02_EliteNative_Entrance_NA15_01",
+--     "/Game/Art/Character/Monster/CH_M_NA_21/Animation/event/ME06_01_Tachy_Entrance_NA_21_05",
+--     "/Game/Art/Character/Monster/CH_M_NA_13/BluePrints/CH_M_NA_13_TypeB_Blueprint_Seq",
+--     "/Game/Art/Character/Monster/CH_M_NA_39/Blueprints/CH_M_NA_39_TypeB_Blueprint_Seq",
+--     "/Game/Art/Character/Monster/CH_M_NA_46/BluePrints/CH_M_NA_46_Var01_BluePrint_Seq",
+--     "/Game/Art/Character/Monster/CH_M_NA_07/Blueprints/CH_M_NA_07_Blueprint_Seq",
+--     "/Game/Art/Character/Monster/CH_M_NA_31/Blueprints/CH_M_NA_31_Blueprint_seq",
+--     "/Game/Art/Character/Monster/CH_M_NA_26/Blueprints/CH_M_NA_26_Seq_BP",
+--     "/Game/Art/Character/Monster/CH_M_NA_22/BluePrints/CH_M_NA_22_Blueprint_Seq",
+--     "/Game/Art/Character/Monster/CH_M_NA_42/Blueprints/CH_M_NA_42_Blueprint",
+--     "/Game/Art/Character/Monster/CH_M_NA_53/Blueprints/CH_M_NA_53_Blueprint",
+--     "/Game/Art/Character/Monster/CH_M_NA_54/Blueprints/CH_M_NA_54_Blueprint",
+--     "/Game/Art/Character/Monster/CH_M_NA_56/Blueprints/CH_M_NA_56_BP_Seq",
+--     "/Game/Art/Character/Monster/CH_M_NA_901/Blueprints/CH_M_NA_901_Blueprint",
+--     "/Game/DLC_2/Art/Character/Monster/CH_M_NA_961/Blueprints/CH_M_NA_961_Blueprint",
+-- }
 
 local function checkPackage()
     local pkg = StaticFindObject(
@@ -221,14 +231,14 @@ ExecuteWithDelay(5000, function()
         dprint("Restarting music " .. ctx:get():GetFullName())
 
         local mapName = GetMapName()
-        dprint("Target map name: " .. mapName)
+        dprint("Current map name: " .. mapName)
 
         local stage_time_append = 3800
         if string.find(mapName, "CH_P_EVE_01_Blueprint_C /Game/Lobby/Lobby.LOBBY") then
             dprint("Move to Lobby")
             stage_time_append = 180
         elseif string.find(mapName, "CH_P_EVE_01_Blueprint_C /Game/Art/BG/WorldMap/") then
-            dprint("Move to Stage")
+            dprint("Move to WorldMap")
         else
             dprint("Unknown map")
         end
@@ -261,5 +271,6 @@ local function setupMod()
 end
 
 print("[SBPod] is loaded\n")
+dprint("Begin to write log")
 
 setupMod()
