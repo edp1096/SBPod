@@ -26,6 +26,7 @@ dist: build
 	copy $(AUDIO_TARGET) dist\SBPod\scripts
 	copy src\main.lua dist\SBPod\scripts
 	copy src\ini.lua dist\SBPod\scripts
+	copy src\text.lua dist\SBPod\scripts
 	copy config.ini dist\SBPod
 	copy enabled.txt dist\SBPod
 

@@ -16,6 +16,7 @@ end
 local audio = require("audio")
 local audio_boss = require("audio")
 local ini = require("ini")
+local text = require("text")
 
 local sound = nil
 local manual_stop = false
@@ -36,6 +37,7 @@ local current_music_index = 0
 
 local use_boss_bgm = true
 local is_boss_bgm_triggered = false
+local boss_bgm_components = {}
 
 
 local worldmap_names = {
@@ -48,9 +50,11 @@ local worldmap_names = {
     Epilog = "/Game/Art/BG/WorldMap/Dungeon_P/Epilogue_P.Epilogue_P"
 }
 local boss_bgm_names = {
-    Abaddon = "/Game/Sound/World/BGM/F02/BGM_DED_BOSS_Abaddon.BGM_DED_BOSS_Abaddon",
-    Abaddon_Finish = "/Game/Sound/World/BGM/F02/BGM_DED_BOSS_Abaddon_FINISH.BGM_DED_BOSS_Abaddon_FINISH",
-    Corrupter = "/Game/Sound/World/BGM/F02/BGM_DED_BOSS_Grubshooter.BGM_DED_BOSS_Grubshooter", -- There is no Corrupter_Finish
+    Abaddon = "BGM/F02/BGM_DED_BOSS_Abaddon",
+    -- Abaddon = "/Game/Sound/World/BGM/F02/BGM_DED_BOSS_Abaddon",
+    -- Abaddon_Finish = "/Game/Sound/World/BGM/F02/BGM_DED_BOSS_Abaddon_FINISH.BGM_DED_BOSS_Abaddon_FINISH",
+    -- Corrupter = "/Game/Sound/World/BGM/F02/BGM_DED_BOSS_Grubshooter.BGM_DED_BOSS_Grubshooter", -- There is no Corrupter_Finish
+    Corrupter = "BGM/F02/BGM_DED_BOSS_Grubshooter",
     Gigas = "/Game/Sound/World/BGM/F02/BGM_DED_BOSS_Gigas_Cue.BGM_DED_BOSS_Gigas_Cue",
     Gigas_Finish = "/Game/Sound/World/BGM/F02/BGM_DED_BOSS_GIGAS_FINISH.BGM_DED_BOSS_GIGAS_FINISH",
     Gigas_ChallengeDone = "/Game/Sound/World/BGM/F02/BGM_DED_BOSS_GIGAS_FINISH.BGM_DED_BOSS_GIGAS_FINISH",
@@ -163,7 +167,8 @@ local function stopMusic()
     sound:stop()
     sound = nil
 
-    dprint("Music is stopped " .. current_music_files[current_music_index])
+    -- dprint("Music is stopped." .. current_music_files[current_music_index])
+    dprint("Music is stopped.")
 end
 
 local function playShuffle(music_files)
@@ -264,81 +269,69 @@ RegisterKeyBind(Key.DEL, function()
 end)
 
 
-
--- -- Game event hooks
--- RegisterHook("/Script/Engine.PlayerController:ClientSetHUD", function(ctx)
---     dprint("ClientSetHUD")
--- end)
-
--- Check boss fighting
-
 local function controlBossBGM(ctx)
     if not ctx.Sound then return end
 
     local cname = ctx:GetFullName()
     if not string.find(cname, ":AudioComponent_") then return end
 
-    local is_playing = false
-    local audio_component_name = nil
-    local boss_name = nil
-    local boss_name_key = nil
-    local polling_interval = 1200 -- ms
+    -- audio_component: component_name, cue_name, wave_name, boss_name_key, is_playing
+    local audio_component = {}
+    local polling_interval = 1250 -- ms
 
-    -- ExecuteAsync(function()
     LoopAsync(polling_interval, function()
         if not ctx or not ctx:IsValid() then return true end
 
         if ctx:IsPlaying() then
-            if ctx:IsPlaying() ~= is_playing then
-                local ctx_name = ctx:GetFullName()
-                local sound_cue = ctx.Sound
-                local sound_cue_name = sound_cue and sound_cue:GetClass():GetFullName() and sound_cue:GetFullName() or
-                    "Unknown Cue"
-                local first_node = sound_cue.FirstNode
-                local sound_wave = first_node and first_node.SoundWave or nil
-                local sound_wave_name = sound_wave and sound_wave:GetFullName() or "Unknown SoundWave"
-                if sound_wave_name ~= "Unknown SoundWave" then
-                    -- Single SoundWave
-                    for k, boss_bgm_name in pairs(boss_bgm_names) do
-                        if string.find(sound_wave_name, boss_bgm_name) then
-                            dprint("SoundWave: " .. sound_wave_name .. "\n- AudioComponent: " .. ctx_name .. "\n- Boss name key: " .. k)
-                            audio_component_name = ctx_name
-                            boss_name_key = k
-                            break
-                        end
-                    end
-                else
-                    -- Multiple SoundWaves or VendingMachine or SoundNodeSwitch or Mixer or others
-                    for k, boss_bgm_name in pairs(boss_bgm_names) do
-                        if string.find(sound_cue_name, boss_bgm_name) then
-                            dprint("Wav/Cue: " .. sound_cue_name .. "\n- AudioComponent: " .. ctx_name .. "\n- Boss name key: " .. k)
-                            audio_component_name = ctx_name
-                            boss_name_key = k
-                            break
-                        end
+            audio_component["context"] = ctx
+            audio_component["component_name"] = ctx:GetFullName()
+            audio_component["cue_name"] = ctx.Sound and
+                ctx.Sound:GetClass():GetFullName() and
+                ctx.Sound:GetFullName() or
+                "Unknown Cue"
+            local sound_wave = ctx.Sound.FirstNode and
+                ctx.Sound.FirstNode.SoundWave or
+                nil
+            audio_component["wave_name"] = sound_wave and sound_wave:GetFullName() or "Unknown SoundWave"
+
+            if audio_component["wave_name"] ~= "Unknown SoundWave" then
+                -- Single SoundWave
+                for k, boss_bgm_name in pairs(boss_bgm_names) do
+                    if string.find(audio_component["wave_name"], boss_bgm_name) then
+                        audio_component["boss_name_key"] = k
+                        break
                     end
                 end
-                is_playing = ctx:IsPlaying()
+            else
+                -- Multiple SoundWaves or VendingMachine or SoundNodeSwitch or Mixer or others
+                for k, boss_bgm_name in pairs(boss_bgm_names) do
+                    if string.find(audio_component["cue_name"], boss_bgm_name) then
+                        audio_component["boss_name_key"] = k
+                        break
+                    end
+                end
             end
 
-            if audio_component_name and not is_boss_bgm_triggered then
-                dprint("Audio Component exist: " .. audio_component_name)
+            if audio_component["boss_name_key"] then
+                audio_component["is_playing"] = ctx:IsPlaying()
+                audio_component["boss_name"] = string.gsub(audio_component["boss_name_key"], "_", " ")
 
-                previous_music_files = current_music_files
-                -- split boss_name underscore
-                if boss_name_key then
-                    boss_name = string.gsub(boss_name_key, "_", " ")
-                end
+                dprint("SoundWave: " .. audio_component["wave_name"])
+                dprint("Wav/Cue: " .. audio_component["cue_name"])
+                dprint("- AudioComponent: " .. audio_component["component_name"])
+                dprint("- Boss name: " .. audio_component["boss_name"])
+                dprint("- Boss name key: " .. audio_component["boss_name_key"])
 
-                if boss_name_key then
-                    dprint("Boss name: " .. boss_name .. "\nBoss name key: " .. boss_name_key)
+                dprint("is_boss_bgm_triggered: " .. tostring(is_boss_bgm_triggered))
 
-                    local boss_music_fname = ""
-                    if boss_name then
-                        boss_music_fname = string.gsub(music_files_boss[boss_name], "%s+", "")
-                    end
-                    if music_files_boss[boss_name] and boss_music_fname ~= "" then
-                        current_music_files = { music_dirs["Boss"] .. "/" .. music_files_boss[boss_name] }
+                table.insert(boss_bgm_components, audio_component)
+
+                if not is_boss_bgm_triggered then
+                    local fname = text:TrimSpace(music_files_boss[audio_component["boss_name"]])
+                    dprint("Current music fname: " .. fname)
+                    if fname ~= "" then
+                        current_music_files = { music_dirs["Boss"] .. "/" .. fname }
+
                         dprint("Current music files: " .. #current_music_files)
                         for i = 1, #current_music_files do
                             dprint("#" .. i .. ": " .. current_music_files[i])
@@ -346,43 +339,73 @@ local function controlBossBGM(ctx)
                     elseif #music_files["Boss"] > 0 then
                         dprint("Boss music: random")
                         current_music_files = music_files["Boss"]
+                    else
+                        dprint("No boss music")
+                        return true
                     end
 
                     is_boss_bgm_triggered = true
 
                     ExecuteAsync(function()
                         manual_stop = true
-                        audio.msleep(50)
+                        audio.msleep(500)
                         if sound then stopMusic() end
                         playShuffleBoss(current_music_files)
                         manual_stop = false
                     end)
-                end
 
-                return false
-            end
-        else
-            if is_playing and not ctx:IsPlaying() then
-                dprint("Stop: " .. cname .. " / " .. tostring(ctx:IsPlaying()))
-                is_playing = ctx:IsPlaying()
-
-                if is_boss_bgm_triggered then
-                    is_boss_bgm_triggered = false
-                    current_music_files = previous_music_files
-
-                    ExecuteAsync(function()
-                        manual_stop = true
-                        audio.msleep(50)
-                        if sound then stopMusic() end
-                        playShuffleBoss(current_music_files)
-                        manual_stop = false
-                    end)
+                    return false
                 end
             end
         end
 
-        return true
-        -- return false
+        if is_boss_bgm_triggered and not ctx:IsPlaying() then
+            dprint("isActive:" .. tostring(ctx:IsActive()) .. ", is_playing:" .. tostring(ctx:IsPlaying()))
+
+            local component_name = ctx:GetFullName()
+            dprint("component_name: " .. component_name)
+
+            for i = #boss_bgm_components, 1, -1 do
+                if boss_bgm_components[i]["component_name"] == component_name then
+                    dprint("Removing stopped component: " .. i .. ": " .. boss_bgm_components[i]["component_name"])
+                    table.remove(boss_bgm_components, i)
+                    break
+                end
+            end
+
+            for i = #boss_bgm_components, 1, -1 do
+                if not boss_bgm_components[i]["context"]:IsPlaying() then
+                    dprint("Removing dead component: " .. i .. ": " .. boss_bgm_components[i]["component_name"])
+                    table.remove(boss_bgm_components, i)
+                end
+            end
+
+            dprint("#boss_bgm_components: " .. #boss_bgm_components)
+            for i = 1, #boss_bgm_components do
+                dprint("#" .. i .. ": " .. boss_bgm_components[i]["wave_name"])
+                dprint("#" .. i .. ": " .. boss_bgm_components[i]["cue_name"])
+                dprint("#" .. i .. ": " .. boss_bgm_components[i]["component_name"])
+                dprint("#" .. i .. ": " .. boss_bgm_components[i]["boss_name_key"])
+            end
+
+            if #boss_bgm_components > 0 then return false end
+
+            is_boss_bgm_triggered = false
+            current_music_files = previous_music_files
+            boss_bgm_components = {}
+
+            ExecuteAsync(function()
+                manual_stop = true
+                audio.msleep(500)
+                if sound then stopMusic() end
+                playShuffle(current_music_files)
+                manual_stop = false
+            end)
+        end
+
+        if #boss_bgm_components == 0 then return true end
+        -- return true
+        return false
     end)
 end
 
@@ -396,8 +419,10 @@ ExecuteWithDelay(5000, function()
     RegisterHook("/Script/Engine.PlayerController:ClientRestart", function(ctx)
         if manual_stop then return end
 
-        current_music_files = music_files["Default"]
         dprint("Engine.PlayerController:ClientRestart")
+
+        current_music_files = music_files["Default"]
+        boss_bgm_components = {}
 
         -- local mapName = GetMapName()
         local mapName = ctx:get():GetFullName()
@@ -423,6 +448,8 @@ ExecuteWithDelay(5000, function()
         else
             dprint("Unknown map")
         end
+
+        previous_music_files = current_music_files
 
         ExecuteAsync(function()
             manual_stop = true
