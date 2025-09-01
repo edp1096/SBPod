@@ -34,6 +34,7 @@ local current_music_files = {}
 local previous_music_index = 0
 local current_music_index = 0
 
+local use_boss_bgm = false
 local is_boss_bgm_triggered = false
 
 
@@ -53,6 +54,7 @@ local boss_bgm_names = {
     Corrupter_Finish = "/Game/Sound/World/BGM/BGMEndSound/BGM_ENDSound_GrubShooter.BGM_ENDSound_GrubShooter",
     Gigas = "/Game/Sound/World/BGM/F02/BGM_DED_BOSS_Gigas_Cue.BGM_DED_BOSS_Gigas_Cue",
     Gigas_Finish = "/Game/Sound/World/BGM/F02/BGM_DED_BOSS_GIGAS_FINISH.BGM_DED_BOSS_GIGAS_FINISH",
+    Gigas_ChallengeDone = "/Game/Sound/World/BGM/F02/BGM_DED_BOSS_GIGAS_FINISH.BGM_DED_BOSS_GIGAS_FINISH",
     Brute = "/Game/Sound/World/BGM/E03/BGM_WASTELAND_BOSS_BRUTE_P1.BGM_WASTELAND_BOSS_BRUTE_P1",
     Brute_Finish = "/Game/Sound/World/BGM/BGMEndSound/BGM_ENDSound_HedgeboarBrute.BGM_ENDSound_HedgeboarBrute",
     Gigas_Wasteland = "/Game/Sound/World/BGM/E03/BGM_WASTELAND_BOSS_GIGAS_Cue.BGM_WASTELAND_BOSS_GIGAS_Cue",
@@ -63,13 +65,14 @@ local boss_bgm_names = {
     Juggernaut_Finish = "/Game/Sound/World/BGM/Matrix_XI/BGM_ME_BOSS_JUGGERNAUT_FINISH.BGM_ME_BOSS_JUGGERNAUT_FINISH",
     Tachy = "/Game/Sound/World/BGM/Matrix_XI/BGM_ME_BOSS_Tachy_P1_Cue.BGM_ME_BOSS_Tachy_P1_Cue",
     Tachy_Finish = "/Game/Sound/World/BGM/Matrix_XI/BGM_BOSS_TACHY_FINISH.BGM_BOSS_TACHY_FINISH",
-    Stalker_GreatDesert = "/Game/Sound/World/BGM/Matrix_XI/BGM_ME_BOSS_STALKER_P1_LOOP_170.BGM_ME_BOSS_STALKER_P1_LOOP_170",
+    Stalker_GreatDesert =
+    "/Game/Sound/World/BGM/Matrix_XI/BGM_ME_BOSS_STALKER_P1_LOOP_170.BGM_ME_BOSS_STALKER_P1_LOOP_170",
     Stalker_GreatDesert_Finish = "/Game/Sound/World/BGM/E05/BGM_E05_BOSS_Sawshark_P2_Cue", -- Actually Phase 2
     -- Abaddon_GreatDesert = "/Game/Sound/World/BGM/F02/BGM_DED_BOSS_Abaddon.BGM_DED_BOSS_Abaddon", -- Same as Abaddon
     Behemoth = "/Game/Sound/World/BGM/E05/BGM_E03_BOSS_Behemoth.BGM_E03_BOSS_Behemoth",
     Behemoth_Finish = "/Game/Sound/World/BGM/BGMEndSound/BGM_ENDSound_BEHEMOTH.BGM_ENDSound_BEHEMOTH",
     -- Corrupter_Eidos9 = "/Game/Sound/World/BGM/F02/BGM_DED_BOSS_Grubshooter.BGM_DED_BOSS_Grubshooter", -- Same as Corrupter
-    Belial = "/Game/Sound/World/BGM/B07/BossBattle/BGM_SE_BOSS_Belial_Cue.BGM_SE_BOSS_Belial_Cue", -- There's no BGMEndSound for Belial
+    -- Belial = "/Game/Sound/World/BGM/B07/BossBattle/BGM_SE_BOSS_Belial_Cue.BGM_SE_BOSS_Belial_Cue", -- There's no BGMEndSound for Belial
     Karakuri = "/Game/Sound/World/BGM/B07/BossBattle/BGM_SE_BOSS_Karakuri_Cue.BGM_SE_BOSS_Karakuri_Cue",
     Karakuri_Finish = "/Game/Sound/World/BGM/BGMEndSound/BGM_ENDSound_Karakuri.BGM_ENDSound_Karakuri",
     Democrawler = "/Game/Sound/World/BGM/B07/BossBattle/BGM_SE_BOSS_Crawler_P1_Cue.BGM_SE_BOSS_Crawler_P1_Cue",
@@ -253,7 +256,7 @@ end)
 
 -- Check boss fighting
 
-NotifyOnNewObject("/Script/Engine.AudioComponent", function(ctx)
+local function controlBossBGM(ctx)
     if not ctx.Sound then return end
 
     local cname = ctx:GetFullName()
@@ -268,7 +271,15 @@ NotifyOnNewObject("/Script/Engine.AudioComponent", function(ctx)
     -- ExecuteAsync(function()
     LoopAsync(polling_interval, function()
         -- if not ctx or not ctx:IsValid() then return end
-        if not ctx or not ctx:IsValid() then return true end
+        if not ctx or not ctx:IsValid() then
+            if audio_component_name then
+                audio_component_name = nil
+                boss_name = nil
+                boss_name_key = nil
+                is_boss_bgm_triggered = false
+            end
+            return true
+        end
 
         if ctx:IsPlaying() then
             if ctx:IsPlaying() ~= is_playing then
@@ -371,7 +382,13 @@ NotifyOnNewObject("/Script/Engine.AudioComponent", function(ctx)
         return true
         -- return false
     end)
-end)
+end
+
+if use_boss_bgm then
+    NotifyOnNewObject("/Script/Engine.AudioComponent", function(ctx)
+        controlBossBGM(ctx)
+    end)
+end
 
 ExecuteWithDelay(5000, function()
     RegisterHook("/Script/Engine.PlayerController:ClientRestart", function(ctx)
