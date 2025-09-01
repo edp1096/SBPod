@@ -14,7 +14,7 @@ end
 
 
 local audio = require("audio")
--- local audio_boss = require("audio")
+local audio_boss = require("audio")
 local ini = require("ini")
 
 local sound = nil
@@ -34,7 +34,7 @@ local current_music_files = {}
 local previous_music_index = 0
 local current_music_index = 0
 
-local use_boss_bgm = false
+local use_boss_bgm = true
 local is_boss_bgm_triggered = false
 
 
@@ -50,13 +50,12 @@ local worldmap_names = {
 local boss_bgm_names = {
     Abaddon = "/Game/Sound/World/BGM/F02/BGM_DED_BOSS_Abaddon.BGM_DED_BOSS_Abaddon",
     Abaddon_Finish = "/Game/Sound/World/BGM/F02/BGM_DED_BOSS_Abaddon_FINISH.BGM_DED_BOSS_Abaddon_FINISH",
-    Corrupter = "/Game/Sound/World/BGM/F02/BGM_DED_BOSS_Grubshooter.BGM_DED_BOSS_Grubshooter",
-    Corrupter_Finish = "/Game/Sound/World/BGM/BGMEndSound/BGM_ENDSound_GrubShooter.BGM_ENDSound_GrubShooter",
+    Corrupter = "/Game/Sound/World/BGM/F02/BGM_DED_BOSS_Grubshooter.BGM_DED_BOSS_Grubshooter", -- There is no Corrupter_Finish
     Gigas = "/Game/Sound/World/BGM/F02/BGM_DED_BOSS_Gigas_Cue.BGM_DED_BOSS_Gigas_Cue",
     Gigas_Finish = "/Game/Sound/World/BGM/F02/BGM_DED_BOSS_GIGAS_FINISH.BGM_DED_BOSS_GIGAS_FINISH",
     Gigas_ChallengeDone = "/Game/Sound/World/BGM/F02/BGM_DED_BOSS_GIGAS_FINISH.BGM_DED_BOSS_GIGAS_FINISH",
     Brute = "/Game/Sound/World/BGM/E03/BGM_WASTELAND_BOSS_BRUTE_P1.BGM_WASTELAND_BOSS_BRUTE_P1",
-    Brute_Finish = "/Game/Sound/World/BGM/BGMEndSound/BGM_ENDSound_HedgeboarBrute.BGM_ENDSound_HedgeboarBrute",
+    Brute_P2 = "/Game/Sound/World/BGM/E03/BGM_WASTELAND_BOSS_BRUTE_P2.BGM_WASTELAND_BOSS_BRUTE_P2",
     Gigas_Wasteland = "/Game/Sound/World/BGM/E03/BGM_WASTELAND_BOSS_GIGAS_Cue.BGM_WASTELAND_BOSS_GIGAS_Cue",
     Gigas_Wasteland_Finish = "/Game/Sound/World/BGM/F02/BGM_DED_BOSS_GIGAS_FINISH.BGM_DED_BOSS_GIGAS_FINISH",
     Stalker = "/Game/Sound/World/BGM/Matrix_XI/BGM_ME_BOSS_Sawshark_Cue.BGM_ME_BOSS_Sawshark_Cue",
@@ -184,6 +183,23 @@ local function playShuffle(music_files)
     playMusic(music_file)
 end
 
+local function playShuffleBoss(music_files)
+    dprint("Shuffling music")
+
+    while previous_music_index == current_music_index do
+        if #music_files == 0 then return end
+        current_music_index = math.random(#music_files)
+        if #music_files == 1 then break end
+    end
+    previous_music_index = current_music_index
+
+    dprint("Music index: " .. current_music_index)
+
+    local music_file = music_files[current_music_index]
+    music_file = music_file:gsub("/", "\\")
+    playMusic(music_file)
+end
+
 local function togglePlay()
     if sound and sound:isPlaying() then
         dprint("Stop music")
@@ -270,16 +286,7 @@ local function controlBossBGM(ctx)
 
     -- ExecuteAsync(function()
     LoopAsync(polling_interval, function()
-        -- if not ctx or not ctx:IsValid() then return end
-        if not ctx or not ctx:IsValid() then
-            if audio_component_name then
-                audio_component_name = nil
-                boss_name = nil
-                boss_name_key = nil
-                is_boss_bgm_triggered = false
-            end
-            return true
-        end
+        if not ctx or not ctx:IsValid() then return true end
 
         if ctx:IsPlaying() then
             if ctx:IsPlaying() ~= is_playing then
@@ -294,9 +301,7 @@ local function controlBossBGM(ctx)
                     -- Single SoundWave
                     for k, boss_bgm_name in pairs(boss_bgm_names) do
                         if string.find(sound_wave_name, boss_bgm_name) then
-                            dprint("SoundWave: " .. sound_wave_name)
-                            dprint("- AudioComponent: " .. ctx_name)
-                            dprint("- Boss name key: " .. k)
+                            dprint("SoundWave: " .. sound_wave_name .. "\n- AudioComponent: " .. ctx_name .. "\n- Boss name key: " .. k)
                             audio_component_name = ctx_name
                             boss_name_key = k
                             break
@@ -306,9 +311,7 @@ local function controlBossBGM(ctx)
                     -- Multiple SoundWaves or VendingMachine or SoundNodeSwitch or Mixer or others
                     for k, boss_bgm_name in pairs(boss_bgm_names) do
                         if string.find(sound_cue_name, boss_bgm_name) then
-                            dprint("Wav/Cue: " .. sound_cue_name)
-                            dprint("- AudioComponent: " .. ctx_name)
-                            dprint("- Boss name key: " .. k)
+                            dprint("Wav/Cue: " .. sound_cue_name .. "\n- AudioComponent: " .. ctx_name .. "\n- Boss name key: " .. k)
                             audio_component_name = ctx_name
                             boss_name_key = k
                             break
@@ -328,8 +331,7 @@ local function controlBossBGM(ctx)
                 end
 
                 if boss_name_key then
-                    dprint("Boss name: " .. boss_name)
-                    dprint("Boss name key: " .. boss_name_key)
+                    dprint("Boss name: " .. boss_name .. "\nBoss name key: " .. boss_name_key)
 
                     local boss_music_fname = ""
                     if boss_name then
@@ -339,7 +341,7 @@ local function controlBossBGM(ctx)
                         current_music_files = { music_dirs["Boss"] .. "/" .. music_files_boss[boss_name] }
                         dprint("Current music files: " .. #current_music_files)
                         for i = 1, #current_music_files do
-                            dprint(current_music_files[i])
+                            dprint("#" .. i .. ": " .. current_music_files[i])
                         end
                     elseif #music_files["Boss"] > 0 then
                         dprint("Boss music: random")
@@ -352,7 +354,7 @@ local function controlBossBGM(ctx)
                         manual_stop = true
                         audio.msleep(50)
                         if sound then stopMusic() end
-                        playShuffle(current_music_files)
+                        playShuffleBoss(current_music_files)
                         manual_stop = false
                     end)
                 end
@@ -360,7 +362,7 @@ local function controlBossBGM(ctx)
                 return false
             end
         else
-            if ctx:IsPlaying() ~= is_playing then
+            if is_playing and not ctx:IsPlaying() then
                 dprint("Stop: " .. cname .. " / " .. tostring(ctx:IsPlaying()))
                 is_playing = ctx:IsPlaying()
 
@@ -372,7 +374,7 @@ local function controlBossBGM(ctx)
                         manual_stop = true
                         audio.msleep(50)
                         if sound then stopMusic() end
-                        playShuffle(current_music_files)
+                        playShuffleBoss(current_music_files)
                         manual_stop = false
                     end)
                 end
@@ -394,7 +396,6 @@ ExecuteWithDelay(5000, function()
     RegisterHook("/Script/Engine.PlayerController:ClientRestart", function(ctx)
         if manual_stop then return end
 
-        is_boss_bgm_triggered = false
         current_music_files = music_files["Default"]
         dprint("Engine.PlayerController:ClientRestart")
 
@@ -436,7 +437,7 @@ end)
 
 local function setupMod()
     audio.init()
-    -- audio_boss.init()
+    audio_boss.init()
     audio.setEndCallback(onMusicEnded)
     music_files["Default"] = GetMusicFiles(music_dirs["Default"])
     music_files["Boss"] = GetMusicFiles(music_dirs["Boss"])
