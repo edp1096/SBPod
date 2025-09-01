@@ -6,7 +6,26 @@ Package when load event boss fight begin.
 
 Abaddon eidos7
 * CH_M_NA_39
-    * Package /Game/Art/Character/Monster/CH_M_NA_39/Blueprints/CH_M_NA_39_Seq_BP
+    * not good - Package /Game/Art/Character/Monster/CH_M_NA_39/Blueprints/CH_M_NA_39_Seq_BP
+    * Package /Game/Art/Character/Monster/CH_M_NA_39/Animation/RootMotionData/M_Opener_Run_S_RM
+
+    * MaterialInstanceDynamic /Game/Art/BG/WorldMap/Level_P/F02.F02:PersistentLevel.CH_M_NA_39_Blueprint_C_2147457252.Weapon_L.MI_CH_M_NA_39_Weapon_Animated_2147455293
+    * MaterialInstanceDynamic /Game/Art/BG/WorldMap/Level_P/F02.F02:PersistentLevel.CH_M_NA_39_Blueprint_C_2147426167.Weapon_L.MI_CH_M_NA_39_Weapon_Animated_2147424228
+
+    * DefaultLevelSequenceInstanceData /Game/Art/BG/WorldMap/Level_P/F02.F02:PersistentLevel.MV_DED01_EliteNative_Entrance_Master_0E2D2756456426650521F1BA86A4A635.InstanceData
+    * SequenceDirector_C /Game/Art/BG/WorldMap/Level_P/F02.F02:PersistentLevel.MV_DED01_EliteNative_Entrance_Master_A271040C40CCB8D3C3C0609968E517BB.AnimationPlayer.SequenceDirector_C_2147413996
+    * SequenceDirector_C /Game/Art/BG/WorldMap/Level_P/F02.F02:PersistentLevel.MV_DED01_Parkinglot_AfterBattle_Master_0D643C8F49D10D2D3DD295B9BD07B2ED.AnimationPlayer.SequenceDirector_C_2147402809
+    * StaticMeshActor /Game/Art/BG/WorldMap/Level_P/F02.F02:PersistentLevel.004_A_SM_2147455458
+    * begin only - CineCameraActor /Game/Art/BG/WorldMap/Level_P/F02.F02:PersistentLevel.CineCameraActor_2147455456
+
+    * Package /Game/GameDesign/Level/Theater/DrownedEidosDistrict/DED01/LevelSeq/MV_DED01_Parkinglot_AfterBattle_QTE_Success
+    * Package /Game/GameDesign/Level/Theater/DrownedEidosDistrict/DED01/LevelSeq/MV_DED01_Parkinglot_AfterBattle_QTE_Success_BossChallenge
+    * MovieSceneSpawnTrack /Game/GameDesign/Level/Theater/DrownedEidosDistrict/DED01/LevelSeq/MV_DED01_Parkinglot_AfterBattle_QTE_Success.MV_DED01_Parkinglot_AfterBattle_QTE_Success:MovieScene_0.MovieSceneSpawnTrack_40
+
+
+    * MovieSceneTransformOriginSystem /Game/Art/BG/WorldMap/Level_P/F02.F02:MovieSceneSequencePlayerEntityLinker.MovieSceneTransformOriginSystem
+
+
 Corrupter eidos7
 * CH_M_NA_07
     * Package /Game/Art/Character/Monster/CH_M_NA_07/Blueprints/CH_M_NA_07_02_Blueprint_Seq

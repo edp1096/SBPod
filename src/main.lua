@@ -14,6 +14,7 @@ end
 
 
 local audio = require("audio")
+-- local audio_boss = require("audio")
 local ini = require("ini")
 
 local sound = nil
@@ -24,11 +25,68 @@ local current_volume = default_volume
 -- local max_volume = 0.2
 local max_volume = 1.0
 
-local music_dir = "C:/Music"
+local music_dirs = {}
 local music_files = {}
+local music_files_boss = {}
+local previous_music_files = {}
+local current_music_files = {}
 
 local previous_music_index = 0
 local current_music_index = 0
+
+local is_boss_bgm_triggered = false
+
+
+local worldmap_names = {
+    G03 = "/Game/Art/BG/WorldMap/Level_P/G03.G03",
+    Eidos7 = "/Game/Art/BG/WorldMap/Level_P/F02.F02",
+    Xion = "/Game/Art/BG/WorldMap/Level_P/E04.E04",
+    Wasteland = "/Game/Art/BG/WorldMap/E03_WasteLand_P/E03_WasteLand_P.E03_WasteLand_P",
+    GreatDesert = "/Game/Art/BG/WorldMap/E05_GreatDesert_P/E05_GreatDesert_P.E05_GreatDesert_P",
+    Nest = "/Game/Art/BG/WorldMap/Level_P/C05.C05",
+    Epilog = "/Game/Art/BG/WorldMap/Dungeon_P/Epilogue_P.Epilogue_P"
+}
+local boss_bgm_names = {
+    Abaddon = "/Game/Sound/World/BGM/F02/BGM_DED_BOSS_Abaddon.BGM_DED_BOSS_Abaddon",
+    Abaddon_Finish = "/Game/Sound/World/BGM/F02/BGM_DED_BOSS_Abaddon_FINISH.BGM_DED_BOSS_Abaddon_FINISH",
+    Corrupter = "/Game/Sound/World/BGM/F02/BGM_DED_BOSS_Grubshooter.BGM_DED_BOSS_Grubshooter",
+    Corrupter_Finish = "/Game/Sound/World/BGM/BGMEndSound/BGM_ENDSound_GrubShooter.BGM_ENDSound_GrubShooter",
+    Gigas = "/Game/Sound/World/BGM/F02/BGM_DED_BOSS_Gigas_Cue.BGM_DED_BOSS_Gigas_Cue",
+    Gigas_Finish = "/Game/Sound/World/BGM/F02/BGM_DED_BOSS_GIGAS_FINISH.BGM_DED_BOSS_GIGAS_FINISH",
+    Brute = "/Game/Sound/World/BGM/E03/BGM_WASTELAND_BOSS_BRUTE_P1.BGM_WASTELAND_BOSS_BRUTE_P1",
+    Brute_Finish = "/Game/Sound/World/BGM/BGMEndSound/BGM_ENDSound_HedgeboarBrute.BGM_ENDSound_HedgeboarBrute",
+    Gigas_Wasteland = "/Game/Sound/World/BGM/E03/BGM_WASTELAND_BOSS_GIGAS_Cue.BGM_WASTELAND_BOSS_GIGAS_Cue",
+    Gigas_Wasteland_Finish = "/Game/Sound/World/BGM/F02/BGM_DED_BOSS_GIGAS_FINISH.BGM_DED_BOSS_GIGAS_FINISH",
+    Stalker = "/Game/Sound/World/BGM/Matrix_XI/BGM_ME_BOSS_Sawshark_Cue.BGM_ME_BOSS_Sawshark_Cue",
+    Stalker_Finish = "/Game/Sound/World/BGM/BGMEndSound/BGM_ENDSound_STALKER.BGM_ENDSound_STALKER",
+    Juggernaut = "/Game/Sound/World/BGM/Matrix_XI/BGM_ME_BOSS_JUGGERNAUT_BELIAL_P1.BGM_ME_BOSS_JUGGERNAUT_BELIAL_P1",
+    Juggernaut_Finish = "/Game/Sound/World/BGM/Matrix_XI/BGM_ME_BOSS_JUGGERNAUT_FINISH.BGM_ME_BOSS_JUGGERNAUT_FINISH",
+    Tachy = "/Game/Sound/World/BGM/Matrix_XI/BGM_ME_BOSS_Tachy_P1_Cue.BGM_ME_BOSS_Tachy_P1_Cue",
+    Tachy_Finish = "/Game/Sound/World/BGM/Matrix_XI/BGM_BOSS_TACHY_FINISH.BGM_BOSS_TACHY_FINISH",
+    Stalker_GreatDesert = "/Game/Sound/World/BGM/Matrix_XI/BGM_ME_BOSS_STALKER_P1_LOOP_170.BGM_ME_BOSS_STALKER_P1_LOOP_170",
+    Stalker_GreatDesert_Finish = "/Game/Sound/World/BGM/E05/BGM_E05_BOSS_Sawshark_P2_Cue", -- Actually Phase 2
+    -- Abaddon_GreatDesert = "/Game/Sound/World/BGM/F02/BGM_DED_BOSS_Abaddon.BGM_DED_BOSS_Abaddon", -- Same as Abaddon
+    Behemoth = "/Game/Sound/World/BGM/E05/BGM_E03_BOSS_Behemoth.BGM_E03_BOSS_Behemoth",
+    Behemoth_Finish = "/Game/Sound/World/BGM/BGMEndSound/BGM_ENDSound_BEHEMOTH.BGM_ENDSound_BEHEMOTH",
+    -- Corrupter_Eidos9 = "/Game/Sound/World/BGM/F02/BGM_DED_BOSS_Grubshooter.BGM_DED_BOSS_Grubshooter", -- Same as Corrupter
+    Belial = "/Game/Sound/World/BGM/B07/BossBattle/BGM_SE_BOSS_Belial_Cue.BGM_SE_BOSS_Belial_Cue", -- There's no BGMEndSound for Belial
+    Karakuri = "/Game/Sound/World/BGM/B07/BossBattle/BGM_SE_BOSS_Karakuri_Cue.BGM_SE_BOSS_Karakuri_Cue",
+    Karakuri_Finish = "/Game/Sound/World/BGM/BGMEndSound/BGM_ENDSound_Karakuri.BGM_ENDSound_Karakuri",
+    Democrawler = "/Game/Sound/World/BGM/B07/BossBattle/BGM_SE_BOSS_Crawler_P1_Cue.BGM_SE_BOSS_Crawler_P1_Cue",
+    Democrawler_Finish = "/Game/Sound/World/BGM/BGMEndSound/EVE_SE_BGMEndSound_2.EVE_SE_BGMEndSound_2", -- Actually DemoGorgon
+    RavenBeast = "/Game/Sound/World/BGM/E04/BGM_XION_BOSS_RavenBeast_P1_Cue.BGM_XION_BOSS_RavenBeast_P1_Cue",
+    RavenBeast_Finish = "/Game/Sound/World/BGM/E04/BGM_XION_BOSS_RAVENBEAST_FINISH.BGM_XION_BOSS_RAVENBEAST_FINISH",
+    Raven = "/Game/Sound/World/BGM/E03/BGM_NEST_BOSS_RAVEN_P1_Cue.BGM_NEST_BOSS_RAVEN_P1_Cue",
+    Raven_Finish = "/Game/Sound/World/BGM/E03/BGM_NEST_BOSS_RAVEN_FINISH.BGM_NEST_BOSS_RAVEN_FINISH",
+    Providence = "/Game/Sound/World/BGM/Nest/BGM_NEST_BOSS_LILY_P1_CUE.BGM_NEST_BOSS_LILY_P1_CUE",
+    Providence_Lily = "/Game/Sound/World/BGM/Nest/BGM_NEST_LILY_P3_SAVE_BATTLE_143.BGM_NEST_LILY_P3_SAVE_BATTLE_143",
+    Providence_Li_ly = "/Game/Sound/World/BGM/Nest/BGM_NEST_BOSS_LILY_P3_DIE.BGM_NEST_BOSS_LILY_P3_DIE",
+    Elder = "/Game/Sound/World/BGM/Nest/BGM_NEST_BOSS_ELDER_P2_CUE.BGM_NEST_BOSS_ELDER_P2_CUE",
+    Elder_01_Finish = "/Game/Sound/World/BGM/Nest/BGM_NEST_BOSS_ELDER_ENDING_01.BGM_NEST_BOSS_ELDER_ENDING_01",
+    Elder_02_Finish = "/Game/Sound/World/BGM/Nest/BGM_NEST_BOSS_ELDER_ENDING_02.BGM_NEST_BOSS_ELDER_ENDING_02",
+    Mann = "/Game/Sound/World/BGM/Nikke/BGM_D2_BOSS_MANN_LOOP.BGM_D2_BOSS_MANN_LOOP",
+    Scarlet = "/Game/Sound/World/BGM/Nikke/BGM_BOSS_SCARLET_P1_Cue.BGM_BOSS_SCARLET_P1_Cue",
+}
 
 
 local cfg, err = ini:Read("ue4ss/Mods/SBPod/config.ini")
@@ -37,7 +95,13 @@ if not cfg then
 end
 if cfg == nil then return end
 
-music_dir = cfg.MusicPath.Default
+for k, v in pairs(cfg.MusicPath) do
+    music_dirs[k] = v
+end
+for k, v in pairs(cfg.Boss) do
+    music_files_boss[k] = v
+end
+
 current_volume = cfg.VolumePercent * max_volume / 100
 if current_volume > max_volume then
     current_volume = max_volume
@@ -50,7 +114,7 @@ if cfg.WorkingMode == "debug" then
 end
 
 
-function GetMusicFiles()
+function GetMusicFiles(music_dir)
     if not audio.dirExists(music_dir) then
         dprint("Music directory not found: " .. music_dir)
         return {}
@@ -97,16 +161,16 @@ local function stopMusic()
     sound:stop()
     sound = nil
 
-    dprint("Music is stopped " .. music_files[current_music_index])
+    dprint("Music is stopped " .. current_music_files[current_music_index])
 end
 
-local function playShuffle()
+local function playShuffle(music_files)
     dprint("Shuffling music")
 
     while previous_music_index == current_music_index do
         if #music_files == 0 then return end
         current_music_index = math.random(#music_files)
-        if #music_files == 1 then return end
+        if #music_files == 1 then break end
     end
     previous_music_index = current_music_index
 
@@ -125,17 +189,17 @@ local function togglePlay()
     else
         dprint("Play music")
         manual_stop = false
-        ExecuteAsync(function() playShuffle() end)
+        ExecuteAsync(function() playShuffle(current_music_files) end)
     end
 end
 
 local function onMusicEnded()
     dprint("Music ended callback triggered")
 
-    if not manual_stop and #music_files > 0 then
+    if not manual_stop and #current_music_files > 0 then
         ExecuteAsync(function()
             audio.msleep(500)
-            playShuffle()
+            playShuffle(current_music_files)
         end)
     end
 end
@@ -150,44 +214,6 @@ function GetMapName()
     end
 
     return map_name
-end
-
--- -- Package checking for game state
--- local pkgs = {
---     "/Game/Art/Character/Monster/CH_M_NA_39/Blueprints/CH_M_NA_39_Seq_BP",
---     "/Game/Art/Character/Monster/CH_M_NA_07/Blueprints/CH_M_NA_07_02_Blueprint_Seq",
---     "/Game/Art/Character/Monster/CH_M_NA_05/Blueprints/CH_M_NA_05_Blueprint_Seq",
---     "/Game/Art/Character/Monster/CH_M_NA_43/Blueprints/CH_M_NA_43_Blueprint_Seq",
---     "/Game/Art/Character/Monster/CH_M_NA_05/Blueprints/CH_M_NA_05_Blueprint_Seq",
---     "/Game/Art/Character/Monster/CH_M_NA_13/BluePrints/CH_M_NA_13_Blueprint_Seq",
---     "/Game/Art/Character/Monster/CH_M_NA_15/Animation/event/ME05_02_EliteNative_Entrance_NA15_01",
---     "/Game/Art/Character/Monster/CH_M_NA_21/Animation/event/ME06_01_Tachy_Entrance_NA_21_05",
---     "/Game/Art/Character/Monster/CH_M_NA_13/BluePrints/CH_M_NA_13_TypeB_Blueprint_Seq",
---     "/Game/Art/Character/Monster/CH_M_NA_39/Blueprints/CH_M_NA_39_TypeB_Blueprint_Seq",
---     "/Game/Art/Character/Monster/CH_M_NA_46/BluePrints/CH_M_NA_46_Var01_BluePrint_Seq",
---     "/Game/Art/Character/Monster/CH_M_NA_07/Blueprints/CH_M_NA_07_Blueprint_Seq",
---     "/Game/Art/Character/Monster/CH_M_NA_31/Blueprints/CH_M_NA_31_Blueprint_seq",
---     "/Game/Art/Character/Monster/CH_M_NA_26/Blueprints/CH_M_NA_26_Seq_BP",
---     "/Game/Art/Character/Monster/CH_M_NA_22/BluePrints/CH_M_NA_22_Blueprint_Seq",
---     "/Game/Art/Character/Monster/CH_M_NA_42/Blueprints/CH_M_NA_42_Blueprint",
---     "/Game/Art/Character/Monster/CH_M_NA_53/Blueprints/CH_M_NA_53_Blueprint",
---     "/Game/Art/Character/Monster/CH_M_NA_54/Blueprints/CH_M_NA_54_Blueprint",
---     "/Game/Art/Character/Monster/CH_M_NA_56/Blueprints/CH_M_NA_56_BP_Seq",
---     "/Game/Art/Character/Monster/CH_M_NA_901/Blueprints/CH_M_NA_901_Blueprint",
---     "/Game/DLC_2/Art/Character/Monster/CH_M_NA_961/Blueprints/CH_M_NA_961_Blueprint",
--- }
-
-local function checkPackage()
-    local pkg = StaticFindObject(
-        "/Game/Art/Character/Monster/CH_M_NA_05/Blueprints/CH_M_NA_05_Blueprint_Seq.CH_M_NA_05_Blueprint_Seq_C")
-
-    if not pkg or not pkg:IsValid() then
-        ExecuteWithDelay(1500, checkPackage)
-        return false
-    end
-
-    dprint("Package found: " .. pkg:GetFullName())
-    return true
 end
 
 -- Key bindings for volume control and playback
@@ -219,26 +245,163 @@ RegisterKeyBind(Key.DEL, function()
 end)
 
 
--- Game event hooks
-RegisterHook("/Script/Engine.PlayerController:ClientSetHUD", function(ctx)
-    dprint("ClientSetHUD")
+
+-- -- Game event hooks
+-- RegisterHook("/Script/Engine.PlayerController:ClientSetHUD", function(ctx)
+--     dprint("ClientSetHUD")
+-- end)
+
+-- Check boss fighting
+
+NotifyOnNewObject("/Script/Engine.AudioComponent", function(ctx)
+    if not ctx.Sound then return end
+
+    local cname = ctx:GetFullName()
+    if not string.find(cname, ":AudioComponent_") then return end
+
+    local is_playing = false
+    local audio_component_name = nil
+    local boss_name = nil
+    local boss_name_key = nil
+    local polling_interval = 1200 -- ms
+
+    -- ExecuteAsync(function()
+    LoopAsync(polling_interval, function()
+        -- if not ctx or not ctx:IsValid() then return end
+        if not ctx or not ctx:IsValid() then return true end
+
+        if ctx:IsPlaying() then
+            if ctx:IsPlaying() ~= is_playing then
+                local ctx_name = ctx:GetFullName()
+                local sound_cue = ctx.Sound
+                local sound_cue_name = sound_cue and sound_cue:GetClass():GetFullName() and sound_cue:GetFullName() or
+                    "Unknown Cue"
+                local first_node = sound_cue.FirstNode
+                local sound_wave = first_node and first_node.SoundWave or nil
+                local sound_wave_name = sound_wave and sound_wave:GetFullName() or "Unknown SoundWave"
+                if sound_wave_name ~= "Unknown SoundWave" then
+                    -- Single SoundWave
+                    for k, boss_bgm_name in pairs(boss_bgm_names) do
+                        if string.find(sound_wave_name, boss_bgm_name) then
+                            dprint("SoundWave: " .. sound_wave_name)
+                            dprint("- AudioComponent: " .. ctx_name)
+                            dprint("- Boss name key: " .. k)
+                            audio_component_name = ctx_name
+                            boss_name_key = k
+                            break
+                        end
+                    end
+                else
+                    -- Multiple SoundWaves or VendingMachine or SoundNodeSwitch or Mixer or others
+                    for k, boss_bgm_name in pairs(boss_bgm_names) do
+                        if string.find(sound_cue_name, boss_bgm_name) then
+                            dprint("Wav/Cue: " .. sound_cue_name)
+                            dprint("- AudioComponent: " .. ctx_name)
+                            dprint("- Boss name key: " .. k)
+                            audio_component_name = ctx_name
+                            boss_name_key = k
+                            break
+                        end
+                    end
+                end
+                is_playing = ctx:IsPlaying()
+            end
+
+            if audio_component_name and not is_boss_bgm_triggered then
+                dprint("Audio Component exist: " .. audio_component_name)
+
+                previous_music_files = current_music_files
+                -- split boss_name underscore
+                if boss_name_key then
+                    boss_name = string.gsub(boss_name_key, "_", " ")
+                end
+
+                if boss_name_key then
+                    dprint("Boss name: " .. boss_name)
+                    dprint("Boss name key: " .. boss_name_key)
+
+                    local boss_music_fname = ""
+                    if boss_name then
+                        boss_music_fname = string.gsub(music_files_boss[boss_name], "%s+", "")
+                    end
+                    if music_files_boss[boss_name] and boss_music_fname ~= "" then
+                        current_music_files = { music_dirs["Boss"] .. "/" .. music_files_boss[boss_name] }
+                        dprint("Current music files: " .. #current_music_files)
+                        for i = 1, #current_music_files do
+                            dprint(current_music_files[i])
+                        end
+                    elseif #music_files["Boss"] > 0 then
+                        dprint("Boss music: random")
+                        current_music_files = music_files["Boss"]
+                    end
+
+                    is_boss_bgm_triggered = true
+
+                    ExecuteAsync(function()
+                        manual_stop = true
+                        audio.msleep(50)
+                        if sound then stopMusic() end
+                        playShuffle(current_music_files)
+                        manual_stop = false
+                    end)
+                end
+
+                return false
+            end
+        else
+            if ctx:IsPlaying() ~= is_playing then
+                dprint("Stop: " .. cname .. " / " .. tostring(ctx:IsPlaying()))
+                is_playing = ctx:IsPlaying()
+
+                if is_boss_bgm_triggered then
+                    is_boss_bgm_triggered = false
+                    current_music_files = previous_music_files
+
+                    ExecuteAsync(function()
+                        manual_stop = true
+                        audio.msleep(50)
+                        if sound then stopMusic() end
+                        playShuffle(current_music_files)
+                        manual_stop = false
+                    end)
+                end
+            end
+        end
+
+        return true
+        -- return false
+    end)
 end)
 
 ExecuteWithDelay(5000, function()
     RegisterHook("/Script/Engine.PlayerController:ClientRestart", function(ctx)
         if manual_stop then return end
 
-        dprint("Restarting music " .. ctx:get():GetFullName())
+        is_boss_bgm_triggered = false
+        current_music_files = music_files["Default"]
+        dprint("Engine.PlayerController:ClientRestart")
 
-        local mapName = GetMapName()
+        -- local mapName = GetMapName()
+        local mapName = ctx:get():GetFullName()
         dprint("Current map name: " .. mapName)
 
         local stage_time_append = 3800
         if string.find(mapName, "CH_P_EVE_01_Blueprint_C /Game/Lobby/Lobby.LOBBY") then
             dprint("Move to Lobby")
             stage_time_append = 180
-        elseif string.find(mapName, "CH_P_EVE_01_Blueprint_C /Game/Art/BG/WorldMap/") then
+        elseif string.find(mapName, "SBNetworkPlayerController /Game/Art/BG/WorldMap/") then
             dprint("Move to WorldMap")
+
+            local music_files_default = GetMusicFiles(music_dirs["Default"])
+            if #music_files_default > 0 then current_music_files = music_files_default end
+
+            for k, v in pairs(worldmap_names) do
+                if string.find(mapName, v) then
+                    local music_files_worldmap = GetMusicFiles(music_dirs[k])
+                    if #music_files_worldmap > 0 then current_music_files = music_files_worldmap end
+                    break
+                end
+            end
         else
             dprint("Unknown map")
         end
@@ -247,10 +410,8 @@ ExecuteWithDelay(5000, function()
             manual_stop = true
             audio.msleep(stage_time_append)
             if sound then stopMusic() end
-            playShuffle()
+            playShuffle(current_music_files)
             manual_stop = false
-
-            checkPackage()
         end)
     end)
 end)
@@ -258,14 +419,16 @@ end)
 
 local function setupMod()
     audio.init()
+    -- audio_boss.init()
     audio.setEndCallback(onMusicEnded)
-    music_files = GetMusicFiles()
+    music_files["Default"] = GetMusicFiles(music_dirs["Default"])
+    music_files["Boss"] = GetMusicFiles(music_dirs["Boss"])
 
     ExecuteWithDelay(180, function()
-        if #music_files > 0 then
-            playShuffle()
+        if #music_files["Default"] > 0 then
+            playShuffle(music_files["Default"])
         else
-            dprint("No music files found in " .. music_dir)
+            dprint("No music files found in " .. music_dirs["Default"])
         end
     end)
 end
