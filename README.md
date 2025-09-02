@@ -3,10 +3,15 @@
 https://www.nexusmods.com/stellarblade/mods/1857
 
 
-## Prequisites for compiling
+## Prequisites
+
+Instead of below, you can try [VSCode working set for Lua](https://github.com/edp1096/my-lua-set).
+
+### Lua
 * Lua >= 5.4.8
+
+### Compiling audio.dll
 * MinGW - https://github.com/brechtsanders/winlibs_mingw
-* Otherwise, You can try [Working set for Lua](https://github.com/edp1096/my-lua-set)
 
 
 ## Compile audio.dll
