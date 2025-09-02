@@ -208,23 +208,6 @@ local function playShuffle(music_files)
     playMusic(music_file)
 end
 
-local function playShuffleBoss(music_files)
-    dprint("Shuffling music")
-
-    while previous_music_index == current_music_index do
-        if #music_files == 0 then return end
-        current_music_index = math.random(#music_files)
-        if #music_files == 1 then break end
-    end
-    previous_music_index = current_music_index
-
-    dprint("Music index: " .. current_music_index)
-
-    local music_file = music_files[current_music_index]
-    music_file = music_file:gsub("/", "\\")
-    playMusic(music_file)
-end
-
 local function togglePlay()
     if sound and sound:isPlaying() then
         dprint("Stop music")
@@ -371,7 +354,7 @@ local function controlBossBGM(ctx)
                         manual_stop = true
                         -- while music_stopping do audio.msleep(100) end
                         if sound then stopMusic() end
-                        playShuffleBoss(current_music_files)
+                        playShuffle(current_music_files)
                         manual_stop = false
                     end)
 

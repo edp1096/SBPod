@@ -33,31 +33,6 @@ function text:Split(str, sep)
     return result
 end
 
--- -- Alternative: Split with exact whitespace handling
--- function text:SplitExact(str, sep)
---     if not str then return {} end
---     if not sep then sep = " " end -- Single space default
-
---     local result = {}
---     local start = 1
---     local sep_len = #sep
-
---     while true do
---         local pos = string.find(str, sep, start, true) -- Plain text search
---         if pos then
---             local part = string.sub(str, start, pos - 1)
---             table.insert(result, part) -- Include empty strings
---             start = pos + sep_len
---         else
---             local part = string.sub(str, start)
---             table.insert(result, part)
---             break
---         end
---     end
-
---     return result
--- end
-
 -- Get first part before separator (your original use case)
 function text:GetFirstPart(str, sep)
     if not str then return nil end
@@ -85,7 +60,6 @@ end
 -- print("\nSpace tests:")
 -- print("Original:", "'" .. space_test .. "'")
 -- print("Split by space (auto-collapse):", table.concat(text:Split(space_test, " "), ", "))
--- print("Split exact spaces:", table.concat(text:SplitExact(space_test, " "), ", "))
 
 -- -- More space examples
 -- local simple_space = "Apple Banana Cherry"
