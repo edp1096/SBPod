@@ -14,7 +14,7 @@ end
 
 
 local audio = require("audio")
-local audio_boss = require("audio")
+-- local audio_boss = require("audio")
 local ini = require("ini")
 local text = require("text")
 
@@ -49,11 +49,17 @@ local boss_bgm_components = {}
 
 
 local worldmap_names = {
+    Lobby = "/Game/Lobby/Lobby.LOBBY",
     G03 = "/Game/Art/BG/WorldMap/Level_P/G03.G03",
     Eidos7 = "/Game/Art/BG/WorldMap/Level_P/F02.F02",
     Xion = "/Game/Art/BG/WorldMap/Level_P/E04.E04",
     Wasteland = "/Game/Art/BG/WorldMap/E03_WasteLand_P/E03_WasteLand_P.E03_WasteLand_P",
+    AltesseLevoir = "/Game/Art/BG/WorldMap/Dungeon_P/AltesLab_P.AltesLab_P",
+    Matrix11 = "/Game/Art/BG/WorldMap/Dungeon_P/Matrix_XI.Matrix_XI",
     GreatDesert = "/Game/Art/BG/WorldMap/E05_GreatDesert_P/E05_GreatDesert_P.E05_GreatDesert_P",
+    AbyssLevoir = "/Game/Art/BG/WorldMap/Dungeon_P/AbyssLab_P.AbyssLab_P",
+    Eidos9 = "/Game/Art/BG/WorldMap/Level_P/F01.F01",
+    Spire4 = "/Game/Art/BG/WorldMap/Level_P/B07.B07",
     Nest = "/Game/Art/BG/WorldMap/Level_P/C05.C05",
     Epilog = "/Game/Art/BG/WorldMap/Dungeon_P/Epilogue_P.Epilogue_P"
 }
@@ -291,17 +297,17 @@ local function onMusicEnded()
     end
 end
 
+-- Not use
+-- function GetMapName()
+--     local map_name = "Unknown Map"
 
-function GetMapName()
-    local map_name = "Unknown Map"
+--     local eve = FindFirstOf("CH_P_EVE_01_Blueprint_C")
+--     if eve and eve:IsValid() then
+--         map_name = eve:GetFullName()
+--     end
 
-    local eve = FindFirstOf("CH_P_EVE_01_Blueprint_C")
-    if eve and eve:IsValid() then
-        map_name = eve:GetFullName()
-    end
-
-    return map_name
-end
+--     return map_name
+-- end
 
 -- Key bindings for volume control and playback
 RegisterKeyBind(0xBD, function() -- Minus key
@@ -512,7 +518,7 @@ end)
 
 local function setupMod()
     audio.init()
-    audio_boss.init()
+    -- audio_boss.init()
     audio.setEndCallback(onMusicEnded)
     music_files["Default"] = GetMusicFiles(music_dirs["Default"])
     music_files["Boss"] = GetMusicFiles(music_dirs["Boss"])
