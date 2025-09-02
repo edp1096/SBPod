@@ -524,19 +524,17 @@ local function setupMod()
     -- audio_boss.init()
     audio.setEndCallback(onMusicEnded)
     music_files["Default"] = GetMusicFiles(music_dirs["Default"])
+    music_files["Lobby"] = GetMusicFiles(music_dirs["Lobby"])
     music_files["Boss"] = GetMusicFiles(music_dirs["Boss"])
 
     ExecuteWithDelay(180, function()
-        if #music_files["Default"] > 0 then
+        if #music_files["Lobby"] > 0 then
+            dprint("Starting initial music playback")
+            current_music_files = music_files["Lobby"]
+            playShuffle(current_music_files)
+        elseif #music_files["Default"] > 0 then
             dprint("Starting initial music playback")
             current_music_files = music_files["Default"]
-
-            local map_name = GetMapName()
-            if string.find(map_name, "Game/Lobby/Lobby.LOBBY") and music_dirs["Lobby"] then
-                music_files["Lobby"] = GetMusicFiles(music_dirs["Lobby"])
-                current_music_files = music_files["Lobby"]
-            end
-
             playShuffle(current_music_files)
         else
             dprint("No music files found in " .. music_dirs["Default"])
