@@ -148,10 +148,10 @@ local function playMusic(music_file)
 end
 
 local function stopMusic()
-    if not sound or music_state.is_stopping then 
-        return false 
+    if not sound or music_state.is_stopping then
+        return false
     end
-    
+
     music_state.is_stopping = true
 
     local fadeout_volume = current_volume
@@ -178,16 +178,17 @@ end
 local function playShuffle(music_files)
     -- Prevent multiple simultaneous shuffle calls, but allow if not transitioning
     if music_state.is_playing_new or music_state.is_stopping then
-        dprint("Cannot start shuffle - music system busy (playing:" .. tostring(music_state.is_playing_new) .. ", stopping:" .. tostring(music_state.is_stopping) .. ")")
+        dprint("Cannot start shuffle - music system busy (playing:" ..
+            tostring(music_state.is_playing_new) .. ", stopping:" .. tostring(music_state.is_stopping) .. ")")
         return false
     end
 
     music_state.is_playing_new = true
-    
+
     dprint("Shuffling music")
 
     while previous_music_index == current_music_index do
-        if #music_files == 0 then 
+        if #music_files == 0 then
             music_state.is_playing_new = false
             dprint("No music files to shuffle")
             return false
@@ -201,10 +202,10 @@ local function playShuffle(music_files)
 
     local music_file = music_files[current_music_index]
     music_file = music_file:gsub("/", "\\")
-    
+
     local success = playMusic(music_file)
     music_state.is_playing_new = false
-    
+
     return success
 end
 
@@ -214,36 +215,36 @@ local function safeMusicTransition(new_music_files, delay)
         dprint("Music transition already in progress")
         return
     end
-    
+
     dprint("Starting music transition with " .. #new_music_files .. " files")
     music_state.is_transitioning = true
-    
+
     ExecuteAsync(function()
         manual_stop = true
-        
+
         if delay and delay > 0 then
             dprint("Waiting " .. delay .. "ms before transition")
             audio.msleep(delay)
         end
-        
+
         -- Stop current music if playing
         if sound then
             dprint("Stopping current music")
             stopMusic()
         end
-        
+
         -- Wait a bit to ensure complete stop
         audio.msleep(100)
-        
+
         -- Reset states before playing new music
         music_state.is_stopping = false
         music_state.is_playing_new = false
-        
+
         -- Play new music if we have files
         if new_music_files and #new_music_files > 0 then
             dprint("Playing new music from transition")
             current_music_files = new_music_files
-            
+
             -- Direct music playing without state checks in transition
             while previous_music_index == current_music_index do
                 if #new_music_files == 0 then break end
@@ -251,19 +252,19 @@ local function safeMusicTransition(new_music_files, delay)
                 if #new_music_files == 1 then break end
             end
             previous_music_index = current_music_index
-            
+
             local music_file = new_music_files[current_music_index]
             music_file = music_file:gsub("/", "\\")
-            
+
             dprint("Transition playing: " .. music_file)
             playMusic(music_file)
         else
             dprint("No music files to play in transition")
         end
-        
+
         manual_stop = false
         music_state.is_transitioning = false
-        
+
         dprint("Music transition completed")
     end)
 end
@@ -272,14 +273,14 @@ local function togglePlay()
     if sound and sound:isPlaying() then
         dprint("Stop music")
         manual_stop = true
-        ExecuteAsync(function() 
-            stopMusic() 
+        ExecuteAsync(function()
+            stopMusic()
         end)
     else
         dprint("Play music")
         manual_stop = false
-        ExecuteAsync(function() 
-            playShuffle(current_music_files) 
+        ExecuteAsync(function()
+            playShuffle(current_music_files)
         end)
     end
 end
@@ -297,17 +298,16 @@ local function onMusicEnded()
     end
 end
 
--- Not use
--- function GetMapName()
---     local map_name = "Unknown Map"
+function GetMapName()
+    local map_name = "Unknown Map"
 
---     local eve = FindFirstOf("CH_P_EVE_01_Blueprint_C")
---     if eve and eve:IsValid() then
---         map_name = eve:GetFullName()
---     end
+    local eve = FindFirstOf("CH_P_EVE_01_Blueprint_C")
+    if eve and eve:IsValid() then
+        map_name = eve:GetFullName()
+    end
 
---     return map_name
--- end
+    return map_name
+end
 
 -- Key bindings for volume control and playback
 RegisterKeyBind(0xBD, function() -- Minus key
@@ -398,7 +398,7 @@ local function controlBossBGM(ctx)
                 if not is_boss_bgm_triggered then
                     local fname = text:TrimSpace(music_files_boss[audio_component["boss_name"]])
                     dprint("Current music fname: " .. tostring(fname))
-                    
+
                     local boss_files = {}
                     if fname ~= "" then
                         boss_files = { music_dirs["Boss"] .. "/" .. fname }
@@ -493,19 +493,22 @@ ExecuteWithDelay(5000, function()
             stage_time_append = 180
         elseif string.find(mapName, "SBNetworkPlayerController /Game/Art/BG/WorldMap/") then
             dprint("Move to WorldMap")
-
-            local music_files_default = GetMusicFiles(music_dirs["Default"])
-            if #music_files_default > 0 then current_music_files = music_files_default end
-
-            for k, v in pairs(worldmap_names) do
-                if string.find(mapName, v) then
-                    local music_files_worldmap = GetMusicFiles(music_dirs[k])
-                    if #music_files_worldmap > 0 then current_music_files = music_files_worldmap end
-                    break
-                end
-            end
         else
-            dprint("Unknown map")
+            dprint("Unknown map. retry")
+            mapName = GetMapName()
+            dprint("Retried map name: " .. mapName)
+        end
+
+        local music_files_default = GetMusicFiles(music_dirs["Default"])
+        if #music_files_default > 0 then current_music_files = music_files_default end
+
+        for k, v in pairs(worldmap_names) do
+            dprint("Worldmap key and name: " .. k .. ", " .. v)
+            if string.find(mapName, v) then
+                local music_files_worldmap = GetMusicFiles(music_dirs[k])
+                if #music_files_worldmap > 0 then current_music_files = music_files_worldmap end
+                break
+            end
         end
 
         previous_music_files = current_music_files
@@ -527,6 +530,13 @@ local function setupMod()
         if #music_files["Default"] > 0 then
             dprint("Starting initial music playback")
             current_music_files = music_files["Default"]
+
+            local map_name = GetMapName()
+            if string.find(map_name, "Game/Lobby/Lobby.LOBBY") and music_dirs["Lobby"] then
+                music_files["Lobby"] = GetMusicFiles(music_dirs["Lobby"])
+                current_music_files = music_files["Lobby"]
+            end
+
             playShuffle(current_music_files)
         else
             dprint("No music files found in " .. music_dirs["Default"])
