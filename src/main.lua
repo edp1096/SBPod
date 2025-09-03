@@ -61,25 +61,30 @@ local worldmap_names = {
     Eidos9 = "/Game/Art/BG/WorldMap/Level_P/F01.F01",
     Spire4 = "/Game/Art/BG/WorldMap/Level_P/B07.B07",
     Nest = "/Game/Art/BG/WorldMap/Level_P/C05.C05",
-    Epilog = "/Game/Art/BG/WorldMap/Dungeon_P/Epilogue_P.Epilogue_P"
+    Epilog = "/Game/Art/BG/WorldMap/Dungeon_P/Epilogue_P.Epilogue_P",
+    EpilogColony = "/Game/Art/BG/WorldMap/Dungeon_P/Ending_P.Ending_P"
 }
 local boss_bgm_names = {
     Abaddon = "BGM/F02/BGM_DED_BOSS_Abaddon",
     Corrupter = "BGM/F02/BGM_DED_BOSS_Grubshooter",
     Gigas = "BGM/F02/BGM_DED_BOSS_Gigas",
     Brute = "BGM/E03/BGM_WASTELAND_BOSS_BRUTE",
-    Gigas_Wasteland = "BGM/E03/BGM_WASTELAND_BOSS_GIGAS",
+    GigasWasteland = "BGM/E03/BGM_WASTELAND_BOSS_GIGAS",
     Stalker = "BGM/Matrix_XI/BGM_ME_BOSS_Sawshark",
     Juggernaut = "BGM/Matrix_XI/BGM_ME_BOSS_JUGGERNAUT",
     Tachy = "BGM/Matrix_XI/BGM_ME_BOSS_Tachy",
-    Stalker_GreatDesert = "BGM/Matrix_XI/BGM_ME_BOSS_STALKER",
+    StalkerGreatDesert = "BGM/Matrix_XI/BGM_ME_BOSS_STALKER",
     Behemoth = "BGM/E05/BGM_E03_BOSS_Behemoth",
     Karakuri = "BGM/B07/BossBattle/BGM_SE_BOSS_Karakuri",
     Democrawler = "BGM/B07/BossBattle/BGM_SE_BOSS_Crawler",
     RavenBeast = "BGM/E04/BGM_XION_BOSS_RavenBeast",
     Raven = "BGM/E03/BGM_NEST_BOSS_RAVEN",
-    Providence = "BGM/Nest/BGM_NEST_BOSS_LILY",
-    Elder = "BGM/Nest/BGM_NEST_BOSS_ELDER",
+    ProvidenceEndLiLyDead = "BGM/Nest/BGM_NEST_BOSS_LILY_END_A",
+    ProvidenceEndLilySave = "BGM/Nest/BGM_NEST_BOSS_LILY_END_CUE",
+    ProvidenceEndLilySaveMotherSphere = "BGM/Nest/BGM_NEST_BOSS_LILY_END_MS_SAVE",
+    Providence = "BGM/Nest/BGM_NEST_BOSS_LILY_P",
+    Comrades = "BGM/Nest/BGM_NEST_EVENT_VIPGUARD_SAVE_CUE",
+    Elder = "BGM/Nest/BGM_NEST_BOSS_ELDER_P",
     Mann = "BGM/Nikke/BGM_D2_BOSS_MANN",
     Scarlet = "BGM/Nikke/BGM_BOSS_SCARLET"
 }
@@ -346,7 +351,9 @@ local function controlBossBGM(ctx)
 
     -- audio_component: component_name, cue_name, wave_name, boss_name_key, is_playing
     local audio_component = {}
-    local polling_interval = 1250 -- ms
+    -- local polling_interval = 1250 -- ms
+    -- local polling_interval = 450 -- ms
+    local polling_interval = 2500 -- ms
 
     LoopAsync(polling_interval, function()
         if not ctx or not ctx:IsValid() then return true end
@@ -363,11 +370,20 @@ local function controlBossBGM(ctx)
                 nil
             audio_component["wave_name"] = sound_wave and sound_wave:GetFullName() or "Unknown SoundWave"
 
+            -- Todo: Hard coding. remove and move to table var.
+            -- Check if this is system music (exclude from boss BGM detection)
+            local is_system_music = string.find(audio_component["cue_name"], "BGM_SYS_EPILOGUE_CUE")
+            -- local is_elder_intro_music = string.find(audio_component["cue_name"], "BGM/Nest/BGM_NEST_BOSS_ELDER_P1_INTRO")
+            -- local is_elder_intro_music = string.find(audio_component["wave_name"], "BGM/Nest/BGM_NEST_BOSS_ELDER_P1_INTRO")
+            local is_intro_music = string.find(audio_component["cue_name"], "BGM/Nest/BGM_") and string.find(audio_component["wave_name"], "_INTRO")
+            if is_system_music or is_intro_music then return true end
+
             if audio_component["wave_name"] ~= "Unknown SoundWave" then
                 -- Single SoundWave
                 for k, boss_bgm_name in pairs(boss_bgm_names) do
                     if string.find(audio_component["wave_name"], boss_bgm_name) then
                         audio_component["boss_name_key"] = text:Split(k, "_")[1]
+                        -- audio_component["boss_name_key"] = k
                         break
                     end
                 end
@@ -376,6 +392,7 @@ local function controlBossBGM(ctx)
                 for k, boss_bgm_name in pairs(boss_bgm_names) do
                     if string.find(audio_component["cue_name"], boss_bgm_name) then
                         audio_component["boss_name_key"] = text:Split(k, "_")[1]
+                        -- audio_component["boss_name_key"] = k
                         break
                     end
                 end
@@ -383,13 +400,14 @@ local function controlBossBGM(ctx)
 
             if audio_component["boss_name_key"] then
                 audio_component["is_playing"] = ctx:IsPlaying()
-                audio_component["boss_name"] = string.gsub(audio_component["boss_name_key"], "_", " ")
+                -- audio_component["boss_name"] = string.gsub(audio_component["boss_name_key"], "_", " ")
+                audio_component["boss_name"] = audio_component["boss_name_key"]
 
                 dprint("SoundWave: " .. audio_component["wave_name"])
                 dprint("Wav/Cue: " .. audio_component["cue_name"])
                 dprint("- AudioComponent: " .. audio_component["component_name"])
                 dprint("- Boss name: " .. audio_component["boss_name"])
-                dprint("- Boss name key: " .. audio_component["boss_name_key"])
+                -- dprint("- Boss name key: " .. audio_component["boss_name_key"])
 
                 dprint("is_boss_bgm_triggered: " .. tostring(is_boss_bgm_triggered))
 
@@ -433,7 +451,7 @@ local function controlBossBGM(ctx)
 
             for i = #boss_bgm_components, 1, -1 do
                 if boss_bgm_components[i]["component_name"] == component_name then
-                    dprint("Removing stopped component: " .. i .. ": " .. boss_bgm_components[i]["component_name"])
+                    -- dprint("Removing stopped component: " .. i .. ": " .. boss_bgm_components[i]["component_name"])
                     table.remove(boss_bgm_components, i)
                     break
                 end
@@ -441,7 +459,7 @@ local function controlBossBGM(ctx)
 
             for i = #boss_bgm_components, 1, -1 do
                 if not boss_bgm_components[i]["context"]:IsPlaying() then
-                    dprint("Removing dead component: " .. i .. ": " .. boss_bgm_components[i]["component_name"])
+                    -- dprint("Removing dead component: " .. i .. ": " .. boss_bgm_components[i]["component_name"])
                     table.remove(boss_bgm_components, i)
                 end
             end
