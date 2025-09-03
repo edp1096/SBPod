@@ -68,22 +68,22 @@ local boss_bgm_names = {
     Abaddon = "BGM/F02/BGM_DED_BOSS_Abaddon",
     Corrupter = "BGM/F02/BGM_DED_BOSS_Grubshooter",
     Gigas = "BGM/F02/BGM_DED_BOSS_Gigas",
-    Brute = "BGM/E03/BGM_WASTELAND_BOSS_BRUTE",
+    Brute = "BGM/E03/BGM_WASTELAND_BOSS_BRUTE_P",
     GigasWasteland = "BGM/E03/BGM_WASTELAND_BOSS_GIGAS",
     Stalker = "BGM/Matrix_XI/BGM_ME_BOSS_Sawshark",
     Juggernaut = "BGM/Matrix_XI/BGM_ME_BOSS_JUGGERNAUT",
     Tachy = "BGM/Matrix_XI/BGM_ME_BOSS_Tachy",
     StalkerGreatDesert = "BGM/Matrix_XI/BGM_ME_BOSS_STALKER",
     Behemoth = "BGM/E05/BGM_E03_BOSS_Behemoth",
+    Belial = "BGM/B07/BossBattle/BGM_SE_BOSS_Belial_Cue",
     Karakuri = "BGM/B07/BossBattle/BGM_SE_BOSS_Karakuri",
     Democrawler = "BGM/B07/BossBattle/BGM_SE_BOSS_Crawler",
     RavenBeast = "BGM/E04/BGM_XION_BOSS_RavenBeast",
     Raven = "BGM/E03/BGM_NEST_BOSS_RAVEN",
-    ProvidenceEndLiLyDead = "BGM/Nest/BGM_NEST_BOSS_LILY_END_A",
-    ProvidenceEndLilySave = "BGM/Nest/BGM_NEST_BOSS_LILY_END_CUE",
-    ProvidenceEndLilySaveMotherSphere = "BGM/Nest/BGM_NEST_BOSS_LILY_END_MS_SAVE",
+    MotherSphereLilyDead = "BGM/Nest/BGM_NEST_BOSS_LILY_END_A",
+    MotherSphereLilySave = "BGM/Nest/BGM_NEST_BOSS_LILY_END_MS_SAVE",
     Providence = "BGM/Nest/BGM_NEST_BOSS_LILY_P",
-    Comrades = "BGM/Nest/BGM_NEST_EVENT_VIPGUARD_SAVE_CUE",
+    Comrades = "BGM/Nest/BGM_NEST_EVENT_VIPGUARD_SAVE_CUE", -- Maybe not necessary
     Elder = "BGM/Nest/BGM_NEST_BOSS_ELDER_P",
     Mann = "BGM/Nikke/BGM_D2_BOSS_MANN",
     Scarlet = "BGM/Nikke/BGM_BOSS_SCARLET"
@@ -411,7 +411,17 @@ local function controlBossBGM(ctx)
 
                 dprint("is_boss_bgm_triggered: " .. tostring(is_boss_bgm_triggered))
 
-                table.insert(boss_bgm_components, audio_component)
+                -- table.insert(boss_bgm_components, audio_component)
+                local already_added = false
+                for i = 1, #boss_bgm_components do
+                    if boss_bgm_components[i]["component_name"] == audio_component["component_name"] then
+                        already_added = true
+                        break
+                    end
+                end
+                if not already_added then
+                    table.insert(boss_bgm_components, audio_component)
+                end
 
                 if not is_boss_bgm_triggered then
                     local fname = text:TrimSpace(music_files_boss[audio_component["boss_name"]])
@@ -436,7 +446,7 @@ local function controlBossBGM(ctx)
                     current_music_files = boss_files
 
                     -- Use safe transition instead of direct async call
-                    safeMusicTransition(boss_files, 0)
+                    safeMusicTransition(boss_files, 50)
 
                     return false
                 end
@@ -479,7 +489,7 @@ local function controlBossBGM(ctx)
             boss_bgm_components = {}
 
             -- Use safe transition instead of direct async call
-            safeMusicTransition(current_music_files, 0)
+            safeMusicTransition(current_music_files, 50)
         end
 
         if #boss_bgm_components == 0 then return true end
