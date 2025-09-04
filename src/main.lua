@@ -68,7 +68,7 @@ local boss_bgm_names = {
     Abaddon = "BGM/F02/BGM_DED_BOSS_Abaddon",
     Corrupter = "BGM/F02/BGM_DED_BOSS_Grubshooter",
     Gigas = "BGM/F02/BGM_DED_BOSS_Gigas",
-    Brute = "BGM/E03/BGM_WASTELAND_BOSS_BRUTE_P",
+    Brute = "BGM/E03/BGM_WASTELAND_BOSS_BRUTE",
     GigasWasteland = "BGM/E03/BGM_WASTELAND_BOSS_GIGAS",
     Stalker = "BGM/Matrix_XI/BGM_ME_BOSS_Sawshark",
     Juggernaut = "BGM/Matrix_XI/BGM_ME_BOSS_JUGGERNAUT",
@@ -80,11 +80,11 @@ local boss_bgm_names = {
     Democrawler = "BGM/B07/BossBattle/BGM_SE_BOSS_Crawler",
     RavenBeast = "BGM/E04/BGM_XION_BOSS_RavenBeast",
     Raven = "BGM/E03/BGM_NEST_BOSS_RAVEN",
-    MotherSphereLilyDead = "BGM/Nest/BGM_NEST_BOSS_LILY_END_A",
     MotherSphereLilySave = "BGM/Nest/BGM_NEST_BOSS_LILY_END_MS_SAVE",
+    MotherSphereLilyDead = "BGM/Nest/BGM_NEST_BOSS_LILY_END_A",
     Providence = "BGM/Nest/BGM_NEST_BOSS_LILY_P",
-    Comrades = "BGM/Nest/BGM_NEST_EVENT_VIPGUARD_SAVE_CUE", -- Maybe not necessary
     Elder = "BGM/Nest/BGM_NEST_BOSS_ELDER_P",
+    ElderEnd = "BGM/Nest/BGM_NEST_BOSS_ELDER_END",
     Mann = "BGM/Nikke/BGM_D2_BOSS_MANN",
     Scarlet = "BGM/Nikke/BGM_BOSS_SCARLET"
 }
@@ -351,9 +351,9 @@ local function controlBossBGM(ctx)
 
     -- audio_component: component_name, cue_name, wave_name, boss_name_key, is_playing
     local audio_component = {}
-    -- local polling_interval = 1250 -- ms
+    local polling_interval = 1250 -- ms
     -- local polling_interval = 450 -- ms
-    local polling_interval = 2500 -- ms
+    -- local polling_interval = 2500 -- ms
 
     LoopAsync(polling_interval, function()
         if not ctx or not ctx:IsValid() then return true end
@@ -375,7 +375,8 @@ local function controlBossBGM(ctx)
             local is_system_music = string.find(audio_component["cue_name"], "BGM_SYS_EPILOGUE_CUE")
             -- local is_elder_intro_music = string.find(audio_component["cue_name"], "BGM/Nest/BGM_NEST_BOSS_ELDER_P1_INTRO")
             -- local is_elder_intro_music = string.find(audio_component["wave_name"], "BGM/Nest/BGM_NEST_BOSS_ELDER_P1_INTRO")
-            local is_intro_music = string.find(audio_component["cue_name"], "BGM/Nest/BGM_") and string.find(audio_component["wave_name"], "_INTRO")
+            local is_intro_music = string.find(audio_component["cue_name"], "BGM/Nest/BGM_") and
+                string.find(audio_component["wave_name"], "_INTRO")
             if is_system_music or is_intro_music then return true end
 
             if audio_component["wave_name"] ~= "Unknown SoundWave" then
@@ -455,6 +456,12 @@ local function controlBossBGM(ctx)
 
         if is_boss_bgm_triggered and not ctx:IsPlaying() then
             dprint("isActive:" .. tostring(ctx:IsActive()) .. ", is_playing:" .. tostring(ctx:IsPlaying()))
+
+            -- Loop forever for Fusion ending (actually until PlayerController:ClientRestart)
+            if string.find(audio_component["boss_name"], "MotherSphereLily") then
+                dprint("Fusion ending. Loop until ending finish")
+                return false
+            end
 
             local component_name = ctx:GetFullName()
             dprint("component_name: " .. component_name)
