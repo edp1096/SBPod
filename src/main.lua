@@ -65,6 +65,7 @@ local worldmap_names = {
     EpilogColony = "/Game/Art/BG/WorldMap/Dungeon_P/Ending_P.Ending_P"
 }
 local boss_bgm_names = {
+    Brute_Prologue = "BGM/G03/BGM_PROLOGUE_BOSS_BRUTE",
     Abaddon = "BGM/F02/BGM_DED_BOSS_Abaddon",
     Corrupter = "BGM/F02/BGM_DED_BOSS_Grubshooter",
     Gigas = "BGM/F02/BGM_DED_BOSS_Gigas",
