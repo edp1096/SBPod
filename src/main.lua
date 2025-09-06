@@ -352,16 +352,16 @@ end)
 
 
 local function controlBossBGM(ctx)
-    if not ctx.Sound then return end
+    if manual_stop or not ctx.Sound then return end
 
     local cname = ctx:GetFullName()
     if not string.find(cname, ":AudioComponent_") then return end
 
     -- audio_component: component_name, cue_name, wave_name, boss_name_key, is_playing
     local audio_component = {}
-    local polling_interval = 1250 -- ms
+    -- local polling_interval = 1250 -- ms
     -- local polling_interval = 450 -- ms
-    -- local polling_interval = 2500 -- ms
+    local polling_interval = 2500 -- ms
 
     LoopAsync(polling_interval, function()
         if not ctx or not ctx:IsValid() then return true end
