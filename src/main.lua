@@ -65,13 +65,13 @@ local worldmap_names = {
     EpilogColony = "/Game/Art/BG/WorldMap/Dungeon_P/Ending_P.Ending_P"
 }
 local boss_bgm_names = {
-    Brute_Prologue = "BGM/G03/BGM_PROLOGUE_BOSS_BRUTE",
+    Brute = "BGM/G03/BGM_PROLOGUE_BOSS_BRUTE",
     Abaddon = "BGM/F02/BGM_DED_BOSS_Abaddon",
     Corrupter = "BGM/F02/BGM_DED_BOSS_Grubshooter",
     Gigas = "BGM/F02/BGM_DED_BOSS_Gigas",
     Quiel = "BGM/E03/BGM_WASTELAND_BOSS_QUIEL",
     MaelstromAltess = "BGM/LAB1/BGM_LAB_BOSS_Maelstrom_",
-    Brute = "BGM/E03/BGM_WASTELAND_BOSS_BRUTE",
+    BruteWasteland = "BGM/E03/BGM_WASTELAND_BOSS_BRUTE",
     GigasWasteland = "BGM/E03/BGM_WASTELAND_BOSS_GIGAS",
     Stalker = "BGM/Matrix_XI/BGM_ME_BOSS_Sawshark",
     Juggernaut = "BGM/Matrix_XI/BGM_ME_BOSS_JUGGERNAUT",
@@ -362,6 +362,10 @@ local function controlBossBGM(ctx)
     -- local polling_interval = 1250 -- ms
     -- local polling_interval = 450 -- ms
     local polling_interval = 2500 -- ms
+    -- local polling_interval = 3500 -- ms
+    if is_debug then
+        polling_interval = 250
+    end
 
     LoopAsync(polling_interval, function()
         if not ctx or not ctx:IsValid() then return true end
