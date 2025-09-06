@@ -14,7 +14,6 @@ end
 
 
 local audio = require("audio")
--- local audio_boss = require("audio")
 local ini = require("ini")
 local text = require("text")
 
@@ -34,6 +33,8 @@ local current_volume = default_volume
 -- local max_volume = 0.2
 local max_volume = 1.0
 
+local play_shuffle = false
+
 local music_dirs = {}
 local music_files = {}
 local music_files_boss = {}
@@ -44,6 +45,7 @@ local previous_music_index = 0
 local current_music_index = 0
 
 local use_boss_bgm = true
+-- local use_boss_bgm = false
 local is_boss_bgm_triggered = false
 local boss_bgm_components = {}
 
@@ -115,6 +117,10 @@ current_volume = cfg.VolumePercent * max_volume / 100
 if current_volume > max_volume then
     current_volume = max_volume
 end
+
+play_shuffle = cfg.PlayShuffle == "true"
+use_boss_bgm = cfg.UseBossBGM == "true"
+
 if cfg.WorkingMode == "debug" then
     is_debug = true
 
@@ -161,14 +167,14 @@ local function playMusic(music_file)
 end
 
 local function stopMusic()
-    if not sound or music_state.is_stopping then
-        return false
-    end
+    if not sound or music_state.is_stopping then return false end
 
     music_state.is_stopping = true
 
     local fadeout_volume = current_volume
     local volume_down_step = current_volume / 50
+
+    dprint("Stopping music")
 
     -- Fadeout effect
     while fadeout_volume > 0.0 and sound do
@@ -188,10 +194,10 @@ local function stopMusic()
     return true
 end
 
-local function playShuffle(music_files)
-    -- Prevent multiple simultaneous shuffle calls, but allow if not transitioning
+local function SelectAndPlayMusicFile(flist)
+    -- Prevent multiple simultaneous SelectAndPlayMusicFile calls, but allow if not transitioning
     if music_state.is_playing_new or music_state.is_stopping then
-        dprint("Cannot start shuffle - music system busy (playing:" ..
+        dprint("Cannot start SelectAndPlayMusicFile - music system busy (playing:" ..
             tostring(music_state.is_playing_new) .. ", stopping:" .. tostring(music_state.is_stopping) .. ")")
         return false
     end
@@ -201,19 +207,25 @@ local function playShuffle(music_files)
     dprint("Shuffling music")
 
     while previous_music_index == current_music_index do
-        if #music_files == 0 then
+        if #flist == 0 then
             music_state.is_playing_new = false
             dprint("No music files to shuffle")
             return false
         end
-        current_music_index = math.random(#music_files)
-        if #music_files == 1 then break end
+
+        if play_shuffle then
+            current_music_index = math.random(#flist)
+        else
+            current_music_index = current_music_index % #flist + 1
+        end
+
+        if #flist == 1 then break end
     end
     previous_music_index = current_music_index
 
     dprint("Music index: " .. current_music_index)
 
-    local music_file = music_files[current_music_index]
+    local music_file = flist[current_music_index]
     music_file = music_file:gsub("/", "\\")
 
     local success = playMusic(music_file)
@@ -259,9 +271,17 @@ local function safeMusicTransition(new_music_files, delay)
             current_music_files = new_music_files
 
             -- Direct music playing without state checks in transition
+            dprint("previous, current indexs: " .. previous_music_index .. ", " .. current_music_index)
             while previous_music_index == current_music_index do
                 if #new_music_files == 0 then break end
-                current_music_index = math.random(#new_music_files)
+
+                if play_shuffle then
+                    current_music_index = math.random(#new_music_files)
+                else
+                    current_music_index = current_music_index % #new_music_files + 1
+                end
+                dprint("Current music index: " .. current_music_index)
+
                 if #new_music_files == 1 then break end
             end
             previous_music_index = current_music_index
@@ -293,7 +313,7 @@ local function togglePlay()
         dprint("Play music")
         manual_stop = false
         ExecuteAsync(function()
-            playShuffle(current_music_files)
+            SelectAndPlayMusicFile(current_music_files)
         end)
     end
 end
@@ -305,7 +325,7 @@ local function onMusicEnded()
         ExecuteAsync(function()
             audio.msleep(500)
             if not manual_stop and not music_state.is_transitioning then
-                playShuffle(current_music_files)
+                SelectAndPlayMusicFile(current_music_files)
             end
         end)
     end
@@ -352,23 +372,16 @@ end)
 
 
 local function controlBossBGM(ctx)
-    if manual_stop or not ctx.Sound then return end
-
-    local cname = ctx:GetFullName()
-    if not string.find(cname, ":AudioComponent_") then return end
-
     -- audio_component: component_name, cue_name, wave_name, boss_name_key, is_playing
     local audio_component = {}
     -- local polling_interval = 1250 -- ms
-    -- local polling_interval = 450 -- ms
-    local polling_interval = 2500 -- ms
-    -- local polling_interval = 3500 -- ms
-    if is_debug then
-        polling_interval = 250
-    end
+    local polling_interval = 3500 -- ms
 
     LoopAsync(polling_interval, function()
-        if not ctx or not ctx:IsValid() then return true end
+        if not ctx or not ctx:IsValid() or not ctx.Sound then return true end
+
+        local cname = ctx:GetFullName()
+        if not string.find(cname, ":AudioComponent_") then return true end
 
         if ctx:IsPlaying() then
             audio_component["context"] = ctx
@@ -459,7 +472,7 @@ local function controlBossBGM(ctx)
                     current_music_files = boss_files
 
                     -- Use safe transition instead of direct async call
-                    safeMusicTransition(boss_files, 50)
+                    safeMusicTransition(boss_files, 30)
 
                     return false
                 end
@@ -508,7 +521,7 @@ local function controlBossBGM(ctx)
             boss_bgm_components = {}
 
             -- Use safe transition instead of direct async call
-            safeMusicTransition(current_music_files, 50)
+            safeMusicTransition(current_music_files, 30)
         end
 
         if #boss_bgm_components == 0 then return true end
@@ -518,6 +531,7 @@ end
 
 if use_boss_bgm then
     NotifyOnNewObject("/Script/Engine.AudioComponent", function(ctx)
+        if manual_stop then return end
         controlBossBGM(ctx)
     end)
 end
@@ -559,6 +573,8 @@ ExecuteWithDelay(5000, function()
         end
 
         previous_music_files = current_music_files
+        previous_music_index = 0
+        current_music_index = 0
 
         -- Use safe transition instead of direct async call
         safeMusicTransition(current_music_files, stage_time_append)
@@ -568,7 +584,6 @@ end)
 
 local function setupMod()
     audio.init()
-    -- audio_boss.init()
     audio.setEndCallback(onMusicEnded)
     music_files["Default"] = GetMusicFiles(music_dirs["Default"])
     music_files["Lobby"] = GetMusicFiles(music_dirs["Lobby"])
@@ -578,11 +593,11 @@ local function setupMod()
         if #music_files["Lobby"] > 0 then
             dprint("Starting initial music playback")
             current_music_files = music_files["Lobby"]
-            playShuffle(current_music_files)
+            SelectAndPlayMusicFile(current_music_files)
         elseif #music_files["Default"] > 0 then
             dprint("Starting initial music playback")
             current_music_files = music_files["Default"]
-            playShuffle(current_music_files)
+            SelectAndPlayMusicFile(current_music_files)
         else
             dprint("No music files found in " .. music_dirs["Default"])
         end
