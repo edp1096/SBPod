@@ -244,77 +244,72 @@ local function safeMusicTransition(new_music_files, delay)
     dprint("Starting music transition with " .. #new_music_files .. " files")
     music_state.is_transitioning = true
 
-    ExecuteAsync(function()
-        manual_stop = true
+    manual_stop = true
 
-        if delay and delay > 0 then
-            dprint("Waiting " .. delay .. "ms before transition")
-            audio.msleep(delay)
-        end
+    if delay and delay > 0 then
+        dprint("Waiting " .. delay .. "ms before transition")
+        audio.msleep(delay)
+    end
 
-        -- Stop current music if playing
-        if sound then
-            dprint("Stopping current music")
-            stopMusic()
-        end
+    -- Stop current music if playing
+    if sound and sound:isPlaying() then
+        dprint("Stopping current music")
+        stopMusic()
+    end
 
-        -- Wait a bit to ensure complete stop
-        audio.msleep(100)
+    -- Wait a bit to ensure complete stop
+    audio.msleep(100)
 
-        -- Reset states before playing new music
-        music_state.is_stopping = false
-        music_state.is_playing_new = false
+    -- Reset states before playing new music
+    music_state.is_stopping = false
+    music_state.is_playing_new = false
 
-        -- Play new music if we have files
-        if new_music_files and #new_music_files > 0 then
-            dprint("Playing new music from transition")
-            current_music_files = new_music_files
+    -- Play new music if we have files
+    if new_music_files and #new_music_files > 0 then
+        dprint("Playing new music from transition")
+        current_music_files = new_music_files
 
-            -- Direct music playing without state checks in transition
-            dprint("previous, current indexs: " .. previous_music_index .. ", " .. current_music_index)
-            while previous_music_index == current_music_index do
-                if #new_music_files == 0 then break end
+        -- Direct music playing without state checks in transition
+        dprint("previous, current indexs: " .. previous_music_index .. ", " .. current_music_index)
+        while previous_music_index == current_music_index do
+            if #new_music_files == 0 then break end
 
-                if play_shuffle then
-                    current_music_index = math.random(#new_music_files)
-                else
-                    current_music_index = current_music_index % #new_music_files + 1
-                end
-                dprint("Current music index: " .. current_music_index)
-
-                if #new_music_files == 1 then break end
+            if play_shuffle then
+                current_music_index = math.random(#new_music_files)
+            else
+                current_music_index = current_music_index % #new_music_files + 1
             end
-            previous_music_index = current_music_index
+            dprint("Current music index: " .. current_music_index)
 
-            local music_file = new_music_files[current_music_index]
-            music_file = music_file:gsub("/", "\\")
-
-            dprint("Transition playing: " .. music_file)
-            playMusic(music_file)
-        else
-            dprint("No music files to play in transition")
+            if #new_music_files == 1 then break end
         end
+        previous_music_index = current_music_index
 
-        manual_stop = false
-        music_state.is_transitioning = false
+        local music_file = new_music_files[current_music_index]
+        music_file = music_file:gsub("/", "\\")
 
-        dprint("Music transition completed")
-    end)
+        dprint("Transition playing: " .. music_file)
+        playMusic(music_file)
+    else
+        dprint("No music files to play in transition")
+    end
+
+    manual_stop = false
+    music_state.is_transitioning = false
+
+    dprint("Music transition completed")
+    return true
 end
 
 local function togglePlay()
     if sound and sound:isPlaying() then
         dprint("Stop music")
         manual_stop = true
-        ExecuteAsync(function()
-            stopMusic()
-        end)
+        stopMusic()
     else
         dprint("Play music")
         manual_stop = false
-        ExecuteAsync(function()
-            SelectAndPlayMusicFile(current_music_files)
-        end)
+        SelectAndPlayMusicFile(current_music_files)
     end
 end
 
@@ -367,7 +362,9 @@ end)
 
 RegisterKeyBind(Key.DEL, function()
     dprint("Del key pressed")
-    togglePlay()
+    ExecuteAsync(function()
+        togglePlay()
+    end)
 end)
 
 
@@ -375,10 +372,13 @@ local function controlBossBGM(ctx)
     -- audio_component: component_name, cue_name, wave_name, boss_name_key, is_playing
     local audio_component = {}
     -- local polling_interval = 1250 -- ms
-    local polling_interval = 3500 -- ms
+    -- local polling_interval = 3500 -- ms
+    local polling_interval = 6500 -- ms
 
     LoopAsync(polling_interval, function()
         if not ctx or not ctx:IsValid() or not ctx.Sound then return true end
+
+        -- dprint("Object type: " .. ctx:GetClass():GetFullName())
 
         local cname = ctx:GetFullName()
         if not string.find(cname, ":AudioComponent_") then return true end
@@ -386,23 +386,28 @@ local function controlBossBGM(ctx)
         if ctx:IsPlaying() then
             audio_component["context"] = ctx
             audio_component["component_name"] = ctx:GetFullName()
+            dprint("Component name: " .. audio_component["component_name"])
+
             audio_component["cue_name"] = ctx.Sound and
                 ctx.Sound:GetClass():GetFullName() and
                 ctx.Sound:GetFullName() or
                 "Unknown Cue"
+            dprint("Cue name: " .. audio_component["cue_name"])
+
             local sound_wave = ctx.Sound.FirstNode and
                 ctx.Sound.FirstNode.SoundWave or
                 nil
             audio_component["wave_name"] = sound_wave and sound_wave:GetFullName() or "Unknown SoundWave"
+            dprint("Wave name: " .. audio_component["wave_name"])
 
             -- Todo: Hard coding. remove and move to table var.
             -- Check if this is system music (exclude from boss BGM detection)
             local is_system_music = string.find(audio_component["cue_name"], "BGM_SYS_EPILOGUE_CUE")
-            -- local is_elder_intro_music = string.find(audio_component["cue_name"], "BGM/Nest/BGM_NEST_BOSS_ELDER_P1_INTRO")
-            -- local is_elder_intro_music = string.find(audio_component["wave_name"], "BGM/Nest/BGM_NEST_BOSS_ELDER_P1_INTRO")
             local is_intro_music = string.find(audio_component["cue_name"], "BGM/Nest/BGM_") and
                 string.find(audio_component["wave_name"], "_INTRO")
             if is_system_music or is_intro_music then return true end
+
+            dprint("#boss_bgm_names: " .. #boss_bgm_names)
 
             if audio_component["wave_name"] ~= "Unknown SoundWave" then
                 -- Single SoundWave
@@ -424,62 +429,64 @@ local function controlBossBGM(ctx)
                 end
             end
 
-            if audio_component["boss_name_key"] then
-                audio_component["is_playing"] = ctx:IsPlaying()
-                -- audio_component["boss_name"] = string.gsub(audio_component["boss_name_key"], "_", " ")
-                audio_component["boss_name"] = audio_component["boss_name_key"]
+            if not audio_component["boss_name_key"] then return true end
 
-                dprint("SoundWave: " .. audio_component["wave_name"])
-                dprint("Wav/Cue: " .. audio_component["cue_name"])
-                dprint("- AudioComponent: " .. audio_component["component_name"])
-                dprint("- Boss name: " .. audio_component["boss_name"])
-                -- dprint("- Boss name key: " .. audio_component["boss_name_key"])
+            dprint("boss_name_key: " .. audio_component["boss_name_key"])
 
-                dprint("is_boss_bgm_triggered: " .. tostring(is_boss_bgm_triggered))
+            audio_component["is_playing"] = ctx:IsPlaying()
+            -- audio_component["boss_name"] = string.gsub(audio_component["boss_name_key"], "_", " ")
+            audio_component["boss_name"] = audio_component["boss_name_key"]
 
-                -- table.insert(boss_bgm_components, audio_component)
-                local already_added = false
-                for i = 1, #boss_bgm_components do
-                    if boss_bgm_components[i]["component_name"] == audio_component["component_name"] then
-                        already_added = true
-                        break
+            dprint("SoundWave: " .. audio_component["wave_name"])
+            dprint("Wav/Cue: " .. audio_component["cue_name"])
+            dprint("- AudioComponent: " .. audio_component["component_name"])
+            dprint("- Boss name: " .. audio_component["boss_name"])
+            -- dprint("- Boss name key: " .. audio_component["boss_name_key"])
+
+            dprint("is_boss_bgm_triggered: " .. tostring(is_boss_bgm_triggered))
+
+            -- table.insert(boss_bgm_components, audio_component)
+            local already_added = false
+            for i = 1, #boss_bgm_components do
+                if boss_bgm_components[i]["component_name"] == audio_component["component_name"] then
+                    already_added = true
+                    break
+                end
+            end
+            if not already_added then
+                table.insert(boss_bgm_components, audio_component)
+            end
+
+            if not is_boss_bgm_triggered then
+                local fname = text:TrimSpace(music_files_boss[audio_component["boss_name"]])
+                dprint("Current music fname: " .. tostring(fname))
+
+                local boss_files = {}
+                if fname ~= "" then
+                    boss_files = { music_dirs["Boss"] .. "/" .. fname }
+                    dprint("Current music files: " .. #boss_files)
+                    for i = 1, #boss_files do
+                        dprint("#" .. i .. ": " .. boss_files[i])
                     end
+                elseif #music_files["Boss"] > 0 then
+                    dprint("Boss music: random")
+                    boss_files = music_files["Boss"]
+                else
+                    dprint("No boss music")
+                    return true
                 end
-                if not already_added then
-                    table.insert(boss_bgm_components, audio_component)
-                end
 
-                if not is_boss_bgm_triggered then
-                    local fname = text:TrimSpace(music_files_boss[audio_component["boss_name"]])
-                    dprint("Current music fname: " .. tostring(fname))
+                is_boss_bgm_triggered = true
+                current_music_files = boss_files
 
-                    local boss_files = {}
-                    if fname ~= "" then
-                        boss_files = { music_dirs["Boss"] .. "/" .. fname }
-                        dprint("Current music files: " .. #boss_files)
-                        for i = 1, #boss_files do
-                            dprint("#" .. i .. ": " .. boss_files[i])
-                        end
-                    elseif #music_files["Boss"] > 0 then
-                        dprint("Boss music: random")
-                        boss_files = music_files["Boss"]
-                    else
-                        dprint("No boss music")
-                        return true
-                    end
+                -- Use safe transition instead of direct async call
+                safeMusicTransition(boss_files, 0)
 
-                    is_boss_bgm_triggered = true
-                    current_music_files = boss_files
-
-                    -- Use safe transition instead of direct async call
-                    safeMusicTransition(boss_files, 30)
-
-                    return false
-                end
+                return false
             end
         end
 
-        if is_boss_bgm_triggered and not ctx:IsPlaying() then
+        if is_boss_bgm_triggered and ctx and not ctx:IsPlaying() then
             dprint("isActive:" .. tostring(ctx:IsActive()) .. ", is_playing:" .. tostring(ctx:IsPlaying()))
 
             -- Loop forever for Fusion ending (actually until PlayerController:ClientRestart)
@@ -500,7 +507,7 @@ local function controlBossBGM(ctx)
             end
 
             for i = #boss_bgm_components, 1, -1 do
-                if not boss_bgm_components[i]["context"]:IsPlaying() then
+                if not boss_bgm_components[i]["context"] or not boss_bgm_components[i]["context"]:IsValid() or not boss_bgm_components[i]["context"]:IsPlaying() then
                     -- dprint("Removing dead component: " .. i .. ": " .. boss_bgm_components[i]["component_name"])
                     table.remove(boss_bgm_components, i)
                 end
@@ -516,12 +523,19 @@ local function controlBossBGM(ctx)
 
             if #boss_bgm_components > 0 then return false end
 
+            -- Raven stage wait for finish or phase 2
+            if audio_component["boss_name_key"] == "Raven" and string.find(audio_component["wave_name"], "BGM_NEST_BOSS_RAVEN_P") then
+                audio.msleep(10000)
+                dprint("Wait for Finish")
+                return false
+            end
+
             is_boss_bgm_triggered = false
             current_music_files = previous_music_files
             boss_bgm_components = {}
 
             -- Use safe transition instead of direct async call
-            safeMusicTransition(current_music_files, 30)
+            safeMusicTransition(current_music_files, 0)
         end
 
         if #boss_bgm_components == 0 then return true end
@@ -577,7 +591,9 @@ ExecuteWithDelay(5000, function()
         current_music_index = 0
 
         -- Use safe transition instead of direct async call
-        safeMusicTransition(current_music_files, stage_time_append)
+        ExecuteAsync(function()
+            safeMusicTransition(current_music_files, stage_time_append)
+        end)
     end)
 end)
 
