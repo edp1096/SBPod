@@ -89,7 +89,8 @@ local boss_bgm_names = {
     Karakuri_P2 = "BGM/B07/BossBattle/BGM_SE_BOSS_KARAKURI_",
     Democrawler = "BGM/B07/BossBattle/BGM_SE_BOSS_Crawler",
     RavenBeast = "BGM/E04/BGM_XION_BOSS_RavenBeast",
-    Raven = "BGM/E03/BGM_NEST_BOSS_RAVEN",
+    Raven = "BGM/E03/BGM_NEST_BOSS_RAVEN_P",
+    -- RavenFinish = "BGM/E03/BGM_NEST_BOSS_RAVEN_FINISH",
     MotherSphereLilySave = "BGM/Nest/BGM_NEST_BOSS_LILY_END_MS_SAVE",
     MotherSphereLilyDead = "BGM/Nest/BGM_NEST_BOSS_LILY_END_A",
     Providence = "BGM/Nest/BGM_NEST_BOSS_LILY_P",
@@ -257,8 +258,8 @@ local function safeMusicTransition(new_music_files, delay)
         stopMusic()
     end
 
-    -- Wait a bit to ensure complete stop
-    audio.msleep(100)
+    -- -- Wait a bit to ensure complete stop
+    -- audio.msleep(100)
 
     -- Reset states before playing new music
     music_state.is_stopping = false
@@ -317,8 +318,9 @@ local function onMusicEnded()
     dprint("Music ended callback triggered")
 
     if not manual_stop and #current_music_files > 0 and not music_state.is_transitioning then
-        ExecuteAsync(function()
-            audio.msleep(500)
+        -- ExecuteAsync(function()
+        ExecuteWithDelay(500, function()
+            -- audio.msleep(500)
             if not manual_stop and not music_state.is_transitioning then
                 SelectAndPlayMusicFile(current_music_files)
             end
@@ -523,12 +525,12 @@ local function controlBossBGM(ctx)
 
             if #boss_bgm_components > 0 then return false end
 
-            -- Raven stage wait for finish or phase 2
-            if audio_component["boss_name_key"] == "Raven" and string.find(audio_component["wave_name"], "BGM_NEST_BOSS_RAVEN_P") then
-                audio.msleep(10000)
-                dprint("Wait for Finish")
-                return false
-            end
+            -- -- Raven stage wait for finish or phase 2
+            -- if audio_component["boss_name_key"] == "Raven" and string.find(audio_component["wave_name"], "BGM_NEST_BOSS_RAVEN_P") then
+            --     audio.msleep(5000)
+            --     dprint("Wait for Finish")
+            --     return false
+            -- end
 
             is_boss_bgm_triggered = false
             current_music_files = previous_music_files
