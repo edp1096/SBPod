@@ -44,8 +44,11 @@ local current_music_files = {}
 local previous_music_index = 0
 local current_music_index = 0
 
+local client_restart_triggered = false
+
 local use_boss_bgm = true
 -- local use_boss_bgm = false
+local current_boss_name = ""
 local is_boss_bgm_triggered = false
 local boss_bgm_components = {}
 
@@ -67,14 +70,17 @@ local worldmap_names = {
     EpilogColony = "/Game/Art/BG/WorldMap/Dungeon_P/Ending_P.Ending_P"
 }
 local boss_bgm_names = {
-    Brute = "BGM/G03/BGM_PROLOGUE_BOSS_BRUTE",
-    Abaddon = "BGM/F02/BGM_DED_BOSS_Abaddon",
-    Corrupter = "BGM/F02/BGM_DED_BOSS_Grubshooter",
-    Gigas = "BGM/F02/BGM_DED_BOSS_Gigas",
+    Brute = "BGM/G03/BGM_PROLOGUE_BOSS_BRUTE_P1",
+    BruteFinish = "BGM/G03/BGM_G03_EVENT_BossFinish",
+    Abaddon = "BGM/F02/BGM_DED_BOSS_Abaddon.BGM_DED_BOSS_Abaddon",
+    AbaddonFinish = "BGM/F02/BGM_DED_BOSS_Abaddon_FINISH.BGM_DED_BOSS_Abaddon_FINISH",
+    -- Corrupter = "BGM/F02/BGM_DED_BOSS_Grubshooter.BGM_DED_BOSS_Grubshooter",
+    Gigas = "BGM/F02/BGM_DED_BOSS_Gigas_Cue.BGM_DED_BOSS_Gigas_Cue",
+    GigasFinish = "BGM/F02/BGM_DED_BOSS_GIGAS_FINISH.BGM_DED_BOSS_GIGAS_FINISH",
     Quiel = "BGM/E03/BGM_WASTELAND_BOSS_QUIEL",
     MaelstromAltess = "BGM/LAB1/BGM_LAB_BOSS_Maelstrom_",
-    BruteWasteland = "BGM/E03/BGM_WASTELAND_BOSS_BRUTE",
-    GigasWasteland = "BGM/E03/BGM_WASTELAND_BOSS_GIGAS",
+    -- BruteWasteland = "BGM/E03/BGM_WASTELAND_BOSS_BRUTE",
+    -- GigasWasteland = "BGM/E03/BGM_WASTELAND_BOSS_GIGAS_Cue.BGM_WASTELAND_BOSS_GIGAS_Cue",
     Stalker = "BGM/Matrix_XI/BGM_ME_BOSS_Sawshark",
     Juggernaut = "BGM/Matrix_XI/BGM_ME_BOSS_JUGGERNAUT",
     Tachy = "BGM/Matrix_XI/BGM_ME_BOSS_Tachy",
@@ -89,8 +95,8 @@ local boss_bgm_names = {
     Karakuri_P2 = "BGM/B07/BossBattle/BGM_SE_BOSS_KARAKURI_",
     Democrawler = "BGM/B07/BossBattle/BGM_SE_BOSS_Crawler",
     RavenBeast = "BGM/E04/BGM_XION_BOSS_RavenBeast",
-    Raven = "BGM/E03/BGM_NEST_BOSS_RAVEN_P",
-    -- RavenFinish = "BGM/E03/BGM_NEST_BOSS_RAVEN_FINISH",
+    Raven = "BGM/E03/BGM_NEST_BOSS_RAVEN_P1",
+    RavenFinish = "BGM/E03/BGM_NEST_Enterance",
     MotherSphereLilySave = "BGM/Nest/BGM_NEST_BOSS_LILY_END_MS_SAVE",
     MotherSphereLilyDead = "BGM/Nest/BGM_NEST_BOSS_LILY_END_A",
     Providence = "BGM/Nest/BGM_NEST_BOSS_LILY_P",
@@ -187,7 +193,7 @@ local function stopMusic()
 
     if sound then
         sound:stop()
-        sound = nil
+        -- sound = nil
     end
 
     music_state.is_stopping = false
@@ -256,10 +262,8 @@ local function safeMusicTransition(new_music_files, delay)
     if sound and sound:isPlaying() then
         dprint("Stopping current music")
         stopMusic()
+        audio.msleep(100)
     end
-
-    -- -- Wait a bit to ensure complete stop
-    -- audio.msleep(100)
 
     -- Reset states before playing new music
     music_state.is_stopping = false
@@ -371,15 +375,14 @@ end)
 
 
 local function controlBossBGM(ctx)
-    -- audio_component: component_name, cue_name, wave_name, boss_name_key, is_playing
+    -- audio_component: component_name, cue_name, wave_name, boss_name_key
     local audio_component = {}
-    -- local polling_interval = 1250 -- ms
+    local polling_interval = 1250 -- ms
     -- local polling_interval = 3500 -- ms
-    local polling_interval = 6500 -- ms
+    -- local polling_interval = 6500 -- ms
 
     LoopAsync(polling_interval, function()
         if not ctx or not ctx:IsValid() or not ctx.Sound then return true end
-
         -- dprint("Object type: " .. ctx:GetClass():GetFullName())
 
         local cname = ctx:GetFullName()
@@ -415,8 +418,8 @@ local function controlBossBGM(ctx)
                 -- Single SoundWave
                 for k, boss_bgm_name in pairs(boss_bgm_names) do
                     if string.find(audio_component["wave_name"], boss_bgm_name) then
-                        audio_component["boss_name_key"] = text:Split(k, "_")[1]
-                        -- audio_component["boss_name_key"] = k
+                        -- audio_component["boss_name_key"] = text:Split(k, "_")[1]
+                        audio_component["boss_name_key"] = k
                         break
                     end
                 end
@@ -424,42 +427,41 @@ local function controlBossBGM(ctx)
                 -- Multiple SoundWaves or VendingMachine or SoundNodeSwitch or Mixer or others
                 for k, boss_bgm_name in pairs(boss_bgm_names) do
                     if string.find(audio_component["cue_name"], boss_bgm_name) then
-                        audio_component["boss_name_key"] = text:Split(k, "_")[1]
-                        -- audio_component["boss_name_key"] = k
+                        -- audio_component["boss_name_key"] = text:Split(k, "_")[1]
+                        audio_component["boss_name_key"] = k
                         break
                     end
                 end
             end
 
-            if not audio_component["boss_name_key"] then return true end
-
             dprint("boss_name_key: " .. audio_component["boss_name_key"])
 
-            audio_component["is_playing"] = ctx:IsPlaying()
-            -- audio_component["boss_name"] = string.gsub(audio_component["boss_name_key"], "_", " ")
-            audio_component["boss_name"] = audio_component["boss_name_key"]
+            if not audio_component["boss_name_key"] then return true end
+
+            audio_component["boss_name"] = string.gsub(audio_component["boss_name_key"], "_", " ")
+            -- audio_component["boss_name"] = audio_component["boss_name_key"]
 
             dprint("SoundWave: " .. audio_component["wave_name"])
             dprint("Wav/Cue: " .. audio_component["cue_name"])
             dprint("- AudioComponent: " .. audio_component["component_name"])
+            dprint("- Boss name key: " .. audio_component["boss_name_key"])
             dprint("- Boss name: " .. audio_component["boss_name"])
-            -- dprint("- Boss name key: " .. audio_component["boss_name_key"])
-
             dprint("is_boss_bgm_triggered: " .. tostring(is_boss_bgm_triggered))
 
-            -- table.insert(boss_bgm_components, audio_component)
-            local already_added = false
-            for i = 1, #boss_bgm_components do
-                if boss_bgm_components[i]["component_name"] == audio_component["component_name"] then
-                    already_added = true
-                    break
-                end
-            end
-            if not already_added then
-                table.insert(boss_bgm_components, audio_component)
-            end
-
             if not is_boss_bgm_triggered then
+                -- Play boss music
+
+                local already_added = false
+                for i = 1, #boss_bgm_components do
+                    if boss_bgm_components[i]["component_name"] == audio_component["component_name"] then
+                        already_added = true
+                        break
+                    end
+                end
+                if not already_added then
+                    table.insert(boss_bgm_components, audio_component)
+                end
+
                 local fname = text:TrimSpace(music_files_boss[audio_component["boss_name"]])
                 dprint("Current music fname: " .. tostring(fname))
 
@@ -481,73 +483,37 @@ local function controlBossBGM(ctx)
                 is_boss_bgm_triggered = true
                 current_music_files = boss_files
 
+                current_boss_name = audio_component["boss_name"]
+
                 -- Use safe transition instead of direct async call
                 safeMusicTransition(boss_files, 0)
+                audio_component = nil
+                return true
+            else
+                -- Stop music by finish
+                if audio_component["boss_name"] == current_boss_name .. "Finish" then
+                    is_boss_bgm_triggered = false
+                    current_music_files = previous_music_files
+                    current_boss_name = ""
+                    boss_bgm_components = {}
+
+                    -- Use safe transition instead of direct async call
+                    safeMusicTransition(current_music_files, 0)
+                    audio_component = nil
+                    return true
+                end
 
                 return false
             end
         end
 
-        if is_boss_bgm_triggered and ctx and not ctx:IsPlaying() then
-            dprint("isActive:" .. tostring(ctx:IsActive()) .. ", is_playing:" .. tostring(ctx:IsPlaying()))
-
-            -- Loop forever for Fusion ending (actually until PlayerController:ClientRestart)
-            if string.find(audio_component["boss_name"], "MotherSphereLily") then
-                dprint("Fusion ending. Loop until ending finish")
-                return false
-            end
-
-            local component_name = ctx:GetFullName()
-            dprint("component_name: " .. component_name)
-
-            for i = #boss_bgm_components, 1, -1 do
-                if boss_bgm_components[i]["component_name"] == component_name then
-                    -- dprint("Removing stopped component: " .. i .. ": " .. boss_bgm_components[i]["component_name"])
-                    table.remove(boss_bgm_components, i)
-                    break
-                end
-            end
-
-            for i = #boss_bgm_components, 1, -1 do
-                if not boss_bgm_components[i]["context"] or not boss_bgm_components[i]["context"]:IsValid() or not boss_bgm_components[i]["context"]:IsPlaying() then
-                    -- dprint("Removing dead component: " .. i .. ": " .. boss_bgm_components[i]["component_name"])
-                    table.remove(boss_bgm_components, i)
-                end
-            end
-
-            dprint("#boss_bgm_components: " .. #boss_bgm_components)
-            for i = 1, #boss_bgm_components do
-                dprint("#" .. i .. ": " .. boss_bgm_components[i]["wave_name"])
-                dprint("#" .. i .. ": " .. boss_bgm_components[i]["cue_name"])
-                dprint("#" .. i .. ": " .. boss_bgm_components[i]["component_name"])
-                dprint("#" .. i .. ": " .. boss_bgm_components[i]["boss_name_key"])
-            end
-
-            if #boss_bgm_components > 0 then return false end
-
-            -- -- Raven stage wait for finish or phase 2
-            -- if audio_component["boss_name_key"] == "Raven" and string.find(audio_component["wave_name"], "BGM_NEST_BOSS_RAVEN_P") then
-            --     audio.msleep(5000)
-            --     dprint("Wait for Finish")
-            --     return false
-            -- end
-
-            is_boss_bgm_triggered = false
-            current_music_files = previous_music_files
-            boss_bgm_components = {}
-
-            -- Use safe transition instead of direct async call
-            safeMusicTransition(current_music_files, 0)
-        end
-
-        if #boss_bgm_components == 0 then return true end
-        return false
+        return true
     end)
 end
 
 if use_boss_bgm then
     NotifyOnNewObject("/Script/Engine.AudioComponent", function(ctx)
-        if manual_stop then return end
+        if manual_stop or client_restart_triggered then return end
         controlBossBGM(ctx)
     end)
 end
@@ -557,6 +523,7 @@ ExecuteWithDelay(5000, function()
         if manual_stop then return end
 
         dprint("Engine.PlayerController:ClientRestart")
+        client_restart_triggered = true
 
         current_music_files = music_files["Default"]
         boss_bgm_components = {}
@@ -595,6 +562,7 @@ ExecuteWithDelay(5000, function()
         -- Use safe transition instead of direct async call
         ExecuteAsync(function()
             safeMusicTransition(current_music_files, stage_time_append)
+            client_restart_triggered = false
         end)
     end)
 end)
