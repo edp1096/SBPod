@@ -73,37 +73,57 @@ local boss_bgm_names = {
     Brute = "BGM/G03/BGM_PROLOGUE_BOSS_BRUTE_P1",
     BruteFinish = "BGM/G03/BGM_G03_EVENT_BossFinish",
     Abaddon = "BGM/F02/BGM_DED_BOSS_Abaddon.BGM_DED_BOSS_Abaddon",
-    AbaddonFinish = "BGM/F02/BGM_DED_BOSS_Abaddon_FINISH.BGM_DED_BOSS_Abaddon_FINISH",
+    AbaddonFinish = "BGM/F02/BGM_DED_ZONE_01_DEFAULT.BGM_DED_ZONE_01_DEFAULT",
     -- Corrupter = "BGM/F02/BGM_DED_BOSS_Grubshooter.BGM_DED_BOSS_Grubshooter",
     Gigas = "BGM/F02/BGM_DED_BOSS_Gigas_Cue.BGM_DED_BOSS_Gigas_Cue",
     GigasFinish = "BGM/F02/BGM_DED_BOSS_GIGAS_FINISH.BGM_DED_BOSS_GIGAS_FINISH",
     Quiel = "BGM/E03/BGM_WASTELAND_BOSS_QUIEL",
-    MaelstromAltess = "BGM/LAB1/BGM_LAB_BOSS_Maelstrom_",
-    -- BruteWasteland = "BGM/E03/BGM_WASTELAND_BOSS_BRUTE",
-    -- GigasWasteland = "BGM/E03/BGM_WASTELAND_BOSS_GIGAS_Cue.BGM_WASTELAND_BOSS_GIGAS_Cue",
+    QuielFinish = "BGM/E03/BGM_WASTELAND_ZONE01C_Default_Cue",
+    MaelstromAltess = "BGM/LAB1/BGM_LAB_BOSS_Melstrom_Cue.BGM_LAB_BOSS_Melstrom_Cue",
+    MaelstromAltessFinish = "BGM/LAB1/BGM_LAB1_ZONE_02_DEFAULT_110.BGM_LAB1_ZONE_02_DEFAULT_110",
+    BruteWasteland = "BGM/E03/BGM_WASTELAND_BOSS_BRUTE",
+    BruteWastelandFinish = "BGM/E03/BGM_WASTELAND_AMB",
+    GigasWasteland = "BGM/E03/BGM_WASTELAND_BOSS_GIGAS_Cue.BGM_WASTELAND_BOSS_GIGAS_Cue",
+    GigasWastelandFinish = "BGM/E03/BGM_WASTELAND_AMB",
     Stalker = "BGM/Matrix_XI/BGM_ME_BOSS_Sawshark",
+    StalkerFinish = "BGM/Matrix_XI/BGM_ME_Zone_03_Default.BGM_ME_Zone_03_Default",
     Juggernaut = "BGM/Matrix_XI/BGM_ME_BOSS_JUGGERNAUT",
+    JuggernautFinish = "BGM/Matrix_XI/BGM_ME_Zone_04_Default.BGM_ME_Zone_04_Default",
     Tachy = "BGM/Matrix_XI/BGM_ME_BOSS_Tachy",
-    Tachy_P2 = "BGM/Matrix_XI/BGM_ME_BOSS_TACHY",
-    StalkerGreatDesert = "BGM/Matrix_XI/BGM_ME_BOSS_STALKER",
-    StalkerGreatDesert_P2 = "BGM/E05/BGM_E05_BOSS_Sawshark",
+    TachyFinish = "BGM/Matrix_XI/BGM_EVENT_Mute_Cue.BGM_EVENT_Mute_Cue",
+    -- TachyFinish = "BGM/Matrix_XI/BGM_BOSS_TACHY_FINISH.BGM_BOSS_TACHY_FINISH",
+    StalkerGreatDesert = "BGM/Matrix_XI/BGM_ME_BOSS_STALKER_P1_LOOP_170.BGM_ME_BOSS_STALKER_P1_LOOP_170",
+    StalkerGreatDesertFinish = "BGM/E05/BGM_DESERT_FIELD_01",
     Shael = "BGM/E05/BGM_DESERT_BOSS_SHAEL",
+    ShaelFinish = "BGM/E05/BGM_DESERT_FIELD_01",
     MaelstromAbyss = "BGM/LAB1/BGM_LAB_BOSS_Maelstrom2_",
+    MaelstromAbyssFinish = "BGM/LAB1/BGM_LAB2_ZONE_02_DEFAULT_110.BGM_LAB1_ZONE_02_DEFAULT_110",
     Behemoth = "BGM/E05/BGM_E03_BOSS_Behemoth",
+    BehemothFinish = "BGM/E05/BGM_DESERT_FIELD_01",
     Belial = "BGM/B07/BossBattle/BGM_SE_BOSS_Belial_Cue",
+    BelialFinish = "Ambient/Amb_Default_wind_02.Amb_Default_wind_02",
     Karakuri = "BGM/B07/BossBattle/BGM_SE_BOSS_Karakuri",
-    Karakuri_P2 = "BGM/B07/BossBattle/BGM_SE_BOSS_KARAKURI_",
+    KarakuriFinish = "BGM/B07/BGM_SE_ZONE_08_Default.BGM_SE_ZONE_08_Default",
     Democrawler = "BGM/B07/BossBattle/BGM_SE_BOSS_Crawler",
-    RavenBeast = "BGM/E04/BGM_XION_BOSS_RavenBeast",
+    DemocrawlerFinish = "BGM/B07/BossBattle/BGM_SE_EVENT_Crawler_Finish.BGM_SE_EVENT_Crawler_Finish",
+    -- Demogorgon = "BGM/B07/BossBattle/BGM_SE_EVENT_Demogorgon_Intro.BGM_SE_EVENT_Demogorgon_Intro",
+    -- -- Demogorgon = "BGM/B07/BossBattle/BGM_SE_BOSS_Demogorgon_Cue.BGM_SE_BOSS_Demogorgon_Cue",
+    -- DemogorgonFinish = "BGM/B07/BossBattle/BGM_SE_EVENT_Demogorgon_Finish.BGM_SE_EVENT_Demogorgon_Finish",
+    -- -- DemogorgonFinish = "BGM/B07/BGM_SE_EVENT_EXOLANDING_PIANO.BGM_SE_EVENT_EXOLANDING_PIANO",
+    RavenBeast = "BGM/E04/BGM_XION_BOSS_RavenBeast_P1_Cue.BGM_XION_BOSS_RavenBeast_P1_Cue",
+    RavenBeastFinish = "BGM/E04/BGM_XION_Cinematic_RAVEN_END_Cue.BGM_XION_Cinematic_RAVEN_END_Cue",
     Raven = "BGM/E03/BGM_NEST_BOSS_RAVEN_P1",
     RavenFinish = "BGM/E03/BGM_NEST_Enterance",
     MotherSphereLilySave = "BGM/Nest/BGM_NEST_BOSS_LILY_END_MS_SAVE",
     MotherSphereLilyDead = "BGM/Nest/BGM_NEST_BOSS_LILY_END_A",
+    -- MotherSphereLilyDead = "BGM/Nest/BGM_NEST_BOSS_LILY_END_CUE",
+    -- MotherSphereLilyDead = "Ambient/E03/AMB_E03_Default_Cue.AMB_E03_Default_Cue",
     Providence = "BGM/Nest/BGM_NEST_BOSS_LILY_P",
     Elder = "BGM/Nest/BGM_NEST_BOSS_ELDER_P",
     ElderEnd = "BGM/Nest/BGM_NEST_BOSS_ELDER_END",
     Mann = "BGM/Nikke/BGM_D2_BOSS_MANN",
-    Scarlet = "BGM/Nikke/BGM_BOSS_SCARLET"
+    Scarlet = "BGM/Nikke/BGM_BOSS_SCARLET_P1",
+    ScarletFinish = "BGM/Nikke/CAMP/BGM_CAMP_NIKKE_08_ON"
 }
 
 
@@ -412,31 +432,34 @@ local function controlBossBGM(ctx)
                 string.find(audio_component["wave_name"], "_INTRO")
             if is_system_music or is_intro_music then return true end
 
+            dprint("current_boss_name: " .. current_boss_name)
             dprint("#boss_bgm_names: " .. #boss_bgm_names)
 
-            if audio_component["wave_name"] ~= "Unknown SoundWave" then
-                -- Single SoundWave
-                for k, boss_bgm_name in pairs(boss_bgm_names) do
-                    if string.find(audio_component["wave_name"], boss_bgm_name) then
-                        -- audio_component["boss_name_key"] = text:Split(k, "_")[1]
-                        audio_component["boss_name_key"] = k
-                        break
-                    end
-                end
-            else
+            -- Single SoundWave
+            local sound_name_key = "wave_name"
+            if audio_component["wave_name"] == "Unknown SoundWave" then
                 -- Multiple SoundWaves or VendingMachine or SoundNodeSwitch or Mixer or others
-                for k, boss_bgm_name in pairs(boss_bgm_names) do
-                    if string.find(audio_component["cue_name"], boss_bgm_name) then
-                        -- audio_component["boss_name_key"] = text:Split(k, "_")[1]
-                        audio_component["boss_name_key"] = k
-                        break
-                    end
+                sound_name_key = "cue_name"
+            end
+
+            for k, boss_bgm_name in pairs(boss_bgm_names) do
+                -- audio_component["boss_name_key"] = text:Split(k, "_")[1]
+                if string.find(audio_component[sound_name_key], boss_bgm_name) and
+                    (
+                        current_boss_name == "" or
+                        text:Split(k, "_")[1] == current_boss_name or
+                        (current_boss_name and text:Split(k, "_")[1] == current_boss_name .. "Finish")
+                    ) then
+                    audio_component["boss_name_key"] = k
+                    break
                 end
             end
 
             dprint("boss_name_key: " .. audio_component["boss_name_key"])
 
-            if not audio_component["boss_name_key"] then return true end
+            if not audio_component["boss_name_key"] or audio_component["boss_name_key"] == "" then
+                return true
+            end
 
             audio_component["boss_name"] = string.gsub(audio_component["boss_name_key"], "_", " ")
             -- audio_component["boss_name"] = audio_component["boss_name_key"]
@@ -484,22 +507,25 @@ local function controlBossBGM(ctx)
                 current_music_files = boss_files
 
                 current_boss_name = audio_component["boss_name"]
+                dprint("Current boss name: " .. current_boss_name)
 
                 -- Use safe transition instead of direct async call
                 safeMusicTransition(boss_files, 0)
                 audio_component = nil
                 return true
             else
-                -- Stop music by finish
+                if not current_boss_name or current_boss_name == "" then return true end
+
+                -- Stop music by stage xxxFinish
                 if audio_component["boss_name"] == current_boss_name .. "Finish" then
                     is_boss_bgm_triggered = false
                     current_music_files = previous_music_files
                     current_boss_name = ""
                     boss_bgm_components = {}
+                    audio_component = nil
 
                     -- Use safe transition instead of direct async call
                     safeMusicTransition(current_music_files, 0)
-                    audio_component = nil
                     return true
                 end
 
@@ -531,7 +557,7 @@ ExecuteWithDelay(5000, function()
         local mapName = ctx:get():GetFullName()
         dprint("Current map name: " .. mapName)
 
-        local stage_time_append = 3800
+        local stage_time_append = 1800
         if string.find(mapName, "CH_P_EVE_01_Blueprint_C /Game/Lobby/Lobby.LOBBY") then
             dprint("Move to Lobby")
             stage_time_append = 180
