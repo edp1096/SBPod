@@ -213,7 +213,7 @@ local function stopMusic()
 
     if sound then
         sound:stop()
-        -- sound = nil
+        sound = nil
     end
 
     music_state.is_stopping = false
@@ -402,6 +402,14 @@ local function controlBossBGM(ctx)
     -- local polling_interval = 6500 -- ms
 
     LoopAsync(polling_interval, function()
+        if client_restart_triggered then
+            dprint("Stop bossBGM. Manual stop or client restart triggered")
+            audio_component = {}
+            current_boss_name = ""
+            is_boss_bgm_triggered = false
+            return true
+        end
+
         if not ctx or not ctx:IsValid() or not ctx.Sound then return true end
         -- dprint("Object type: " .. ctx:GetClass():GetFullName())
 
@@ -455,11 +463,17 @@ local function controlBossBGM(ctx)
                 end
             end
 
-            dprint("boss_name_key: " .. audio_component["boss_name_key"])
-
-            if not audio_component["boss_name_key"] or audio_component["boss_name_key"] == "" then
+            if not audio_component["boss_name_key"] then
+                dprint("boss_name_key: nil")
                 return true
             end
+
+            if audio_component["boss_name_key"] == "" then
+                dprint("boss_name_key is empty")
+                return true
+            end
+
+            dprint("boss_name_key: " .. audio_component["boss_name_key"])
 
             audio_component["boss_name"] = string.gsub(audio_component["boss_name_key"], "_", " ")
             -- audio_component["boss_name"] = audio_component["boss_name_key"]
@@ -473,6 +487,11 @@ local function controlBossBGM(ctx)
 
             if not is_boss_bgm_triggered then
                 -- Play boss music
+
+                if string.find(audio_component["boss_name"], "Finish") then
+                    dprint("Boss music: finish")
+                    return true
+                end
 
                 local already_added = false
                 for i = 1, #boss_bgm_components do
@@ -511,7 +530,8 @@ local function controlBossBGM(ctx)
 
                 -- Use safe transition instead of direct async call
                 safeMusicTransition(boss_files, 0)
-                audio_component = nil
+                current_boss_name = ""
+                audio_component = {}
                 return true
             else
                 if not current_boss_name or current_boss_name == "" then return true end
@@ -522,7 +542,7 @@ local function controlBossBGM(ctx)
                     current_music_files = previous_music_files
                     current_boss_name = ""
                     boss_bgm_components = {}
-                    audio_component = nil
+                    audio_component = {}
 
                     -- Use safe transition instead of direct async call
                     safeMusicTransition(current_music_files, 0)
@@ -584,6 +604,9 @@ ExecuteWithDelay(5000, function()
         previous_music_files = current_music_files
         previous_music_index = 0
         current_music_index = 0
+
+        current_boss_name = ""
+        is_boss_bgm_triggered = false
 
         -- Use safe transition instead of direct async call
         ExecuteAsync(function()
