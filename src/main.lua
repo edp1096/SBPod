@@ -113,7 +113,7 @@ local boss_bgm_names = {
     RavenBeast = "BGM/E04/BGM_XION_BOSS_RavenBeast_P1_Cue.BGM_XION_BOSS_RavenBeast_P1_Cue",
     RavenBeastFinish = "BGM/E04/BGM_XION_Cinematic_RAVEN_END_Cue.BGM_XION_Cinematic_RAVEN_END_Cue",
     Raven = "BGM/E03/BGM_NEST_BOSS_RAVEN_P1",
-    RavenFinish = "BGM/E03/BGM_NEST_Enterance",
+    RavenFinish = "BGM/E03/BGM_NEST_Enterance.BGM_NEST_Enterance",
     MotherSphereLilySave = "BGM/Nest/BGM_NEST_BOSS_LILY_END_MS_SAVE",
     MotherSphereLilyDead = "BGM/Nest/BGM_NEST_BOSS_LILY_END_A",
     -- MotherSphereLilyDead = "BGM/Nest/BGM_NEST_BOSS_LILY_END_CUE",
@@ -530,14 +530,14 @@ local function controlBossBGM(ctx)
 
                 -- Use safe transition instead of direct async call
                 safeMusicTransition(boss_files, 0)
-                current_boss_name = ""
-                audio_component = {}
                 return true
             else
                 if not current_boss_name or current_boss_name == "" then return true end
 
                 -- Stop music by stage xxxFinish
                 if audio_component["boss_name"] == current_boss_name .. "Finish" then
+                    dprint("Stop boss music: " .. current_boss_name)
+
                     is_boss_bgm_triggered = false
                     current_music_files = previous_music_files
                     current_boss_name = ""
