@@ -145,7 +145,7 @@ if current_volume > max_volume then
     current_volume = max_volume
 end
 
-play_shuffle = cfg.PlayShuffle == "true"
+play_shuffle = cfg.Shuffle == "true"
 use_boss_bgm = cfg.UseBossBGM == "true"
 
 if cfg.WorkingMode == "debug" then
@@ -250,6 +250,8 @@ local function SelectAndPlayMusicFile(flist)
     end
     previous_music_index = current_music_index
 
+    dprint("Shuffle mode: " .. tostring(play_shuffle) .. "/" .. tostring(cfg.Shuffle))
+    dprint("Music count: " .. tostring(#flist))
     dprint("Music index: " .. current_music_index)
 
     local music_file = flist[current_music_index]
@@ -304,6 +306,8 @@ local function safeMusicTransition(new_music_files, delay)
             else
                 current_music_index = current_music_index % #new_music_files + 1
             end
+            dprint("Shuffle mode: " .. tostring(play_shuffle) .. "/" .. tostring(cfg.Shuffle))
+            dprint("Music count: " .. tostring(#new_music_files))
             dprint("Current music index: " .. current_music_index)
 
             if #new_music_files == 1 then break end
@@ -534,18 +538,22 @@ local function controlBossBGM(ctx)
             else
                 if not current_boss_name or current_boss_name == "" then return true end
 
+                dprint("Playing boss music: " .. current_boss_name)
+
                 -- Stop music by stage xxxFinish
                 if audio_component["boss_name"] == current_boss_name .. "Finish" then
                     dprint("Stop boss music: " .. current_boss_name)
 
                     is_boss_bgm_triggered = false
                     current_music_files = previous_music_files
-                    current_boss_name = ""
+
                     boss_bgm_components = {}
                     audio_component = {}
+                    current_boss_name = ""
 
                     -- Use safe transition instead of direct async call
                     safeMusicTransition(current_music_files, 0)
+
                     return true
                 end
 
