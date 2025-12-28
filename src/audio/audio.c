@@ -60,17 +60,36 @@ static void sound_end_callback(void* pUserData, ma_sound* pSound) {
     (void)pUserData;  // Unused parameter
     (void)pSound;     // Unused parameter
 
-    if (g_lua_state && g_end_callback_ref != LUA_NOREF) {
-        // Get the callback function from registry
-        lua_rawgeti(g_lua_state, LUA_REGISTRYINDEX, g_end_callback_ref);
+    // Safety check: ensure Lua state is valid
+    if (!g_lua_state || g_end_callback_ref == LUA_NOREF) {
+        return;
+    }
 
-        // Call the Lua callback function
-        if (lua_pcall(g_lua_state, 0, 0, 0) != LUA_OK) {
-            // If there's an error, print it but don't crash
-            const char* error = lua_tostring(g_lua_state, -1);
+    // Save stack position for cleanup
+    int top = lua_gettop(g_lua_state);
+
+    // Get the callback function from registry
+    lua_rawgeti(g_lua_state, LUA_REGISTRYINDEX, g_end_callback_ref);
+
+    // Strict type check: must be a Lua function (not C function, not userdata)
+    int callback_type = lua_type(g_lua_state, -1);
+    if (callback_type != LUA_TFUNCTION) {
+        printf("Audio callback warning: callback type is %d (expected %d for function)\n",
+               callback_type, LUA_TFUNCTION);
+        lua_settop(g_lua_state, top);  // Restore stack
+        return;
+    }
+
+    // Call the Lua callback function with protected call
+    if (lua_pcall(g_lua_state, 0, 0, 0) != LUA_OK) {
+        // If there's an error, print it but don't crash
+        const char* error = lua_tostring(g_lua_state, -1);
+        if (error) {
             printf("Audio callback error: %s\n", error);
-            lua_pop(g_lua_state, 1);  // Remove error from stack
+        } else {
+            printf("Audio callback error: unknown error\n");
         }
+        lua_settop(g_lua_state, top);  // Restore stack
     }
 }
 
@@ -236,8 +255,22 @@ static int l_sound_stop(lua_State* L) {
         return 1;
     }
 
-    ma_sound_stop(lua_sound->sound);
-    lua_pushboolean(L, 1);
+    // Check if already stopped - if so, just return success
+    // This prevents crashes from multiple stop calls
+    ma_bool32 is_playing = ma_sound_is_playing(lua_sound->sound);
+    if (!is_playing) {
+        // Already stopped, return success without doing anything
+        lua_pushboolean(L, 1);
+        return 1;
+    }
+
+    // Stop the sound
+    ma_result result = ma_sound_stop(lua_sound->sound);
+
+    // Small delay to ensure callbacks complete
+    ma_sleep(10);
+
+    lua_pushboolean(L, result == MA_SUCCESS);
     return 1;
 }
 
@@ -331,6 +364,15 @@ static int l_sound_gc(lua_State* L) {
     LuaSound* lua_sound = (LuaSound*)luaL_checkudata(L, 1, "LuaSound");
 
     if (lua_sound->is_valid && lua_sound->sound) {
+        // Stop the sound first if it's still playing
+        ma_bool32 is_playing = ma_sound_is_playing(lua_sound->sound);
+        if (is_playing) {
+            ma_sound_stop(lua_sound->sound);
+            // Small delay to allow any pending callbacks to complete
+            ma_sleep(10);
+        }
+
+        // Now safe to uninitialize
         ma_sound_uninit(lua_sound->sound);
         free(lua_sound->sound);
         lua_sound->sound = NULL;

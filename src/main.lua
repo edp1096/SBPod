@@ -18,6 +18,7 @@ local ini = require("ini")
 local text = require("text")
 
 local sound = nil
+local current_sound_uid = 0  -- Unique ID for current music session
 local manual_stop = false
 
 -- Music control state management to prevent race conditions
@@ -45,12 +46,23 @@ local previous_music_index = 0
 local current_music_index = 0
 
 local client_restart_triggered = false
+local pending_map_transition = false
+local pending_transition_files = nil
+local pending_transition_delay = 0
+
+local current_map = ""  -- Current map name
+local current_map_is_lobby = true  -- Track if current map is Lobby (game starts in Lobby)
 
 local use_boss_bgm = true
--- local use_boss_bgm = false
 local current_boss_name = ""
 local is_boss_bgm_triggered = false
 local boss_bgm_components = {}
+local pending_audio_components = {}  -- Queue for audio components to check
+local pending_boss_transition = false  -- Boss BGM transition pending
+local pending_boss_files = nil
+
+local boss_notification_registered = false
+local boss_bgm_notification_active = false
 
 
 local worldmap_names = {
@@ -179,6 +191,11 @@ local function playMusic(music_file)
         dprint("Cannot play music - currently stopping")
         return false
     end
+
+    -- Generate new UID for this music session
+    current_sound_uid = current_sound_uid + 1
+    local this_uid = current_sound_uid
+    dprint("Starting music session UID: " .. this_uid)
 
     sound = audio.load(music_file)
     if not sound then
@@ -342,19 +359,450 @@ local function togglePlay()
     end
 end
 
-local function onMusicEnded()
-    dprint("Music ended callback triggered")
+local function controlBossBGM(ctx)
+    -- Just add to queue for processing, don't create LoopAsync per component
+    if not ctx then
+        return
+    end
 
-    if not manual_stop and #current_music_files > 0 and not music_state.is_transitioning then
-        -- ExecuteAsync(function()
-        ExecuteWithDelay(500, function()
-            -- audio.msleep(500)
-            if not manual_stop and not music_state.is_transitioning then
-                SelectAndPlayMusicFile(current_music_files)
+    -- Safely check if valid
+    local is_valid_success, is_valid = pcall(function() return ctx:IsValid() end)
+    if not is_valid_success or not is_valid then
+        return
+    end
+
+    -- Don't process Boss BGM in Lobby
+    if current_map_is_lobby then
+        return
+    end
+
+    -- Quick filter: only process AudioComponent objects - SAFELY
+    local cname_success, cname = pcall(function() return ctx:GetFullName() end)
+    if not cname_success or not cname or type(cname) ~= "string" then
+        return  -- Failed to get name or not a string
+    end
+
+    if not string.find(cname, ":AudioComponent_") then
+        return
+    end
+
+    -- Prevent duplicates - check if already in queue
+    for i = 1, #pending_audio_components do
+        if pending_audio_components[i] == ctx then
+            return  -- Already in queue
+        end
+    end
+
+    -- Limit queue size to prevent memory issues
+    if #pending_audio_components > 100 then
+        dprint("WARNING: AudioComponent queue full, skipping")
+        return
+    end
+
+    -- Add to pending queue for global loop to process
+    table.insert(pending_audio_components, ctx)
+    -- dprint("Added AudioComponent to queue. Queue size: " .. #pending_audio_components)
+end
+
+-- Process boss BGM audio component (called from MASTER LOOP)
+local function processBossAudioComponent(ctx)
+    -- Wrap ENTIRE function in pcall to prevent any crashes
+    local process_ok, process_err = pcall(function()
+        -- Quick validation
+        if not ctx then return end
+        if not ctx:IsValid() then return end
+        if not ctx.Sound then return end
+        if not ctx:IsPlaying() then return end
+
+        -- Process this component
+        local audio_component = {}
+        audio_component["context"] = ctx
+        audio_component["component_name"] = ctx:GetFullName()
+
+        if not audio_component["component_name"] then return end
+        dprint("Component name: " .. tostring(audio_component["component_name"]))
+
+        -- Get cue name - simplified
+        audio_component["cue_name"] = "Unknown Cue"
+        if ctx.Sound then
+            local ok, fullname = pcall(function()
+                return ctx.Sound:GetFullName()
+            end)
+            if ok and fullname and type(fullname) == "string" then
+                audio_component["cue_name"] = fullname
             end
-        end)
+        end
+        dprint("Cue name: " .. tostring(audio_component["cue_name"]))
+
+        -- Get wave name - simplified
+        audio_component["wave_name"] = "Unknown SoundWave"
+        if ctx.Sound and ctx.Sound.FirstNode and ctx.Sound.FirstNode.SoundWave then
+            local ok, wave_name = pcall(function()
+                return ctx.Sound.FirstNode.SoundWave:GetFullName()
+            end)
+            if ok and wave_name and type(wave_name) == "string" then
+                audio_component["wave_name"] = wave_name
+            end
+        end
+        dprint("Wave name: " .. tostring(audio_component["wave_name"]))
+
+        -- Check if this is system music (exclude from boss BGM detection)
+        local is_system_music = string.find(audio_component["cue_name"], "BGM_SYS_EPILOGUE_CUE")
+        local is_intro_music = string.find(audio_component["cue_name"], "BGM/Nest/BGM_") and
+            string.find(audio_component["wave_name"], "_INTRO")
+        if is_system_music or is_intro_music then return end
+
+        dprint("current_boss_name: " .. tostring(current_boss_name))
+
+        -- Single SoundWave
+        local sound_name_key = "wave_name"
+        if audio_component["wave_name"] == "Unknown SoundWave" then
+            sound_name_key = "cue_name"
+        end
+
+        -- Match boss BGM name
+        for k, boss_bgm_name in pairs(boss_bgm_names) do
+            local sound_name_value = audio_component[sound_name_key]
+            if sound_name_value and type(sound_name_value) == "string" and string.find(sound_name_value, boss_bgm_name) then
+                -- Split boss name key
+                local parts = {}
+                for part in string.gmatch(k, "[^_]+") do
+                    table.insert(parts, part)
+                end
+                if parts[1] then
+                    local boss_prefix = parts[1]
+                    if current_boss_name == "" or boss_prefix == current_boss_name or
+                       (current_boss_name and boss_prefix == current_boss_name .. "Finish") then
+                        audio_component["boss_name_key"] = k
+                        break
+                    end
+                end
+            end
+        end
+
+        if not audio_component["boss_name_key"] then
+            dprint("boss_name_key: nil")
+            return
+        end
+
+        if audio_component["boss_name_key"] == "" then
+            dprint("boss_name_key is empty")
+            return
+        end
+
+        dprint("boss_name_key: " .. tostring(audio_component["boss_name_key"]))
+
+        audio_component["boss_name"] = string.gsub(audio_component["boss_name_key"], "_", " ")
+
+        dprint("SoundWave: " .. tostring(audio_component["wave_name"]))
+        dprint("Wav/Cue: " .. tostring(audio_component["cue_name"]))
+        dprint("- Boss name: " .. tostring(audio_component["boss_name"]))
+        dprint("is_boss_bgm_triggered: " .. tostring(is_boss_bgm_triggered))
+
+        if not is_boss_bgm_triggered then
+            -- Play boss music
+            if string.find(audio_component["boss_name"], "Finish") then
+                dprint("Boss music: finish")
+                return
+            end
+
+            local already_added = false
+            for i = 1, #boss_bgm_components do
+                if boss_bgm_components[i]["component_name"] == audio_component["component_name"] then
+                    already_added = true
+                    break
+                end
+            end
+            if not already_added then
+                table.insert(boss_bgm_components, audio_component)
+            end
+
+            local fname = text:TrimSpace(music_files_boss[audio_component["boss_name"]])
+            dprint("Current music fname: " .. tostring(fname))
+
+            local boss_files = {}
+            if fname ~= "" then
+                boss_files = { music_dirs["Boss"] .. "/" .. fname }
+                dprint("Current music files: " .. #boss_files)
+            elseif #music_files["Boss"] > 0 then
+                dprint("Boss music: random")
+                boss_files = music_files["Boss"]
+            else
+                dprint("No boss music")
+                return
+            end
+
+            is_boss_bgm_triggered = true
+            current_music_files = boss_files
+            current_boss_name = audio_component["boss_name"]
+            dprint("Current boss name: " .. current_boss_name)
+
+            -- Set pending transition
+            pending_boss_transition = true
+            pending_boss_files = boss_files
+            dprint("Boss BGM transition pending")
+        else
+            if not current_boss_name or current_boss_name == "" then return end
+            dprint("Playing boss music: " .. current_boss_name)
+
+            -- Stop music by stage xxxFinish
+            if audio_component["boss_name"] == current_boss_name .. "Finish" then
+                dprint("Stop boss music: " .. current_boss_name)
+
+                is_boss_bgm_triggered = false
+                current_music_files = previous_music_files
+                boss_bgm_components = {}
+                current_boss_name = ""
+
+                -- Set pending transition
+                pending_boss_transition = true
+                pending_boss_files = current_music_files
+                dprint("Boss BGM finish transition pending")
+            end
+        end
+    end)  -- End of pcall
+
+    if not process_ok then
+        dprint("ERROR processBossAudioComponent: " .. tostring(process_err))
     end
 end
+
+-- Boss BGM: Dynamic registration function with auto-unregister
+local function registerBossNotification()
+    if boss_notification_registered then
+        dprint("Boss notification already registered, skipping")
+        return
+    end
+
+    NotifyOnNewObject("/Script/Engine.AudioComponent", function(ctx)
+        -- Check if should unregister (비활성화 또는 Lobby면 해제)
+        if not boss_bgm_notification_active or current_map_is_lobby then
+            boss_notification_registered = false
+            dprint("Boss BGM NotifyOnNewObject UNREGISTERED (inactive or lobby)")
+            return true  -- ← Unregister this callback
+        end
+
+        -- Process (wrapped in pcall to prevent crashes)
+        pcall(function()
+            -- Fast validation
+            if not ctx or type(ctx) ~= "userdata" then return end
+            if manual_stop or client_restart_triggered then return end
+
+            -- Minimal validation - if any fails, just return silently
+            local is_valid = pcall(function() return ctx:IsValid() end)
+            if not is_valid then return end
+
+            local ok, name = pcall(function() return ctx:GetFullName() end)
+            if not ok or not name or type(name) ~= "string" then return end
+            if not string.find(name, ":AudioComponent_") then return end
+
+            -- Check queue limit
+            if #pending_audio_components >= 100 then return end
+
+            -- Check duplicate
+            for i = 1, #pending_audio_components do
+                if pending_audio_components[i] == ctx then return end
+            end
+
+            -- Add to queue
+            table.insert(pending_audio_components, ctx)
+        end)
+
+        return false  -- Keep listening
+    end)
+
+    boss_notification_registered = true
+    dprint("Boss BGM NotifyOnNewObject REGISTERED")
+end
+
+-- MASTER LOOP: All async operations in one place to prevent conflicts
+local last_music_playing = false
+local last_checked_uid = 0
+local loop_counter = 0
+local map_transition_cooldown = 0  -- Cooldown after map transition
+
+LoopAsync(200, function()
+    local loop_success, loop_error = pcall(function()
+        loop_counter = loop_counter + 1
+
+        -- Debug: Log every 10 cycles (2 seconds)
+        if loop_counter % 10 == 0 then
+            dprint("MASTER LOOP alive - cycle " .. loop_counter)
+        end
+
+        -- Decrease cooldown timer
+        if map_transition_cooldown > 0 then
+            map_transition_cooldown = map_transition_cooldown - 1
+        end
+
+        -- Task 1: Map transition (highest priority)
+    if pending_map_transition and not music_state.is_transitioning then
+        pending_map_transition = false
+        pending_boss_transition = false  -- Cancel boss transition if map transition occurs
+        map_transition_cooldown = 20  -- 10 second cooldown (50 cycles * 200ms)
+        boss_bgm_notification_active = false  -- Deactivate Boss BGM notifications during transition
+        dprint("Boss BGM notifications DEACTIVATED (map transition)")
+
+        local files = pending_transition_files
+        local delay = pending_transition_delay
+        pending_transition_files = nil
+        pending_transition_delay = 0
+
+        -- Stop current music with fadeout
+        if sound and sound:isPlaying() then
+            stopMusic()
+        end
+        audio.msleep(50)
+
+        local success, err = pcall(function()
+            safeMusicTransition(files, delay)
+        end)
+        if not success then
+            dprint("ERROR in pending transition: " .. tostring(err))
+        end
+        client_restart_triggered = false
+        return false  -- Skip other tasks this cycle
+    end
+
+    -- Task 1.5: Boss BGM transition (if pending and no other transition)
+    if pending_boss_transition and not music_state.is_transitioning and not pending_map_transition then
+        dprint("Task 1.5: Starting Boss BGM transition")
+        pending_boss_transition = false
+        local files = pending_boss_files
+        pending_boss_files = nil
+
+        if files and #files > 0 then
+            dprint("Task 1.5: Transitioning to " .. #files .. " files")
+            local success, err = pcall(function()
+                safeMusicTransition(files, 0)
+            end)
+            if not success then
+                dprint("ERROR Task 1.5 boss transition failed: " .. tostring(err))
+            else
+                dprint("Task 1.5: Boss transition completed successfully")
+            end
+        else
+            dprint("Task 1.5: No files to transition")
+        end
+        return false  -- Skip other tasks this cycle
+    end
+
+    -- Task 1.6: Boss BGM notification registration (after cooldown expires)
+    if use_boss_bgm and not boss_notification_registered and map_transition_cooldown == 0 and not current_map_is_lobby then
+        boss_bgm_notification_active = true
+        registerBossNotification()  -- Register with auto-unregister capability
+        dprint("Boss BGM notifications ACTIVATED (cooldown expired, not in Lobby)")
+    end
+
+    -- Task 2: Music end detection (every 2-3 cycles - ~500ms)
+    if loop_counter % 3 == 0 then
+        if not music_state.is_transitioning and not music_state.is_stopping and not music_state.is_playing_new and sound then
+            local current_uid = current_sound_uid
+            if last_checked_uid ~= 0 and last_checked_uid ~= current_uid then
+                last_music_playing = false
+                last_checked_uid = current_uid
+            else
+                last_checked_uid = current_uid
+                local is_playing = false
+
+                -- Defensive check: ensure sound is valid and has isPlaying method
+                if sound and type(sound) == "userdata" then
+                    local success, result = pcall(function() return sound:isPlaying() end)
+                    if success and type(result) == "boolean" then
+                        is_playing = result
+                    else
+                        dprint("ERROR Task 2: isPlaying() failed - " .. tostring(result))
+                        sound = nil  -- Invalid sound object, clear it
+                        return false
+                    end
+                elseif sound then
+                    dprint("ERROR Task 2: sound is not userdata, type=" .. tostring(type(sound)))
+                    sound = nil
+                    return false
+                end
+
+                if last_music_playing and not is_playing and current_sound_uid == current_uid then
+                    if not manual_stop and #current_music_files > 0 and not music_state.is_transitioning then
+                        -- Safe function calls with validation
+                        if audio and type(audio.msleep) == "function" then
+                            local sleep_success, sleep_err = pcall(function() audio.msleep(300) end)
+                            if not sleep_success then
+                                dprint("ERROR Task 2: audio.msleep failed - " .. tostring(sleep_err))
+                            end
+                        else
+                            dprint("ERROR Task 2: audio.msleep is not a function")
+                        end
+
+                        if current_sound_uid == current_uid and not manual_stop and not music_state.is_transitioning then
+                            if type(SelectAndPlayMusicFile) == "function" then
+                                local play_success, play_err = pcall(function()
+                                    SelectAndPlayMusicFile(current_music_files)
+                                end)
+                                if not play_success then
+                                    dprint("ERROR Task 2: SelectAndPlayMusicFile failed - " .. tostring(play_err))
+                                end
+                            else
+                                dprint("ERROR Task 2: SelectAndPlayMusicFile is not a function, type=" .. tostring(type(SelectAndPlayMusicFile)))
+                            end
+                        end
+                    end
+                end
+                last_music_playing = is_playing
+            end
+        else
+            last_music_playing = false
+        end
+    end
+
+    -- Task 3: Boss BGM component processing (every 5 cycles - ~1000ms, up to 5 components per cycle)
+    -- DISABLED in Lobby and during cooldown period
+    if use_boss_bgm and not current_map_is_lobby and loop_counter % 5 == 0 and map_transition_cooldown == 0 then
+        local task3_success, task3_err = pcall(function()
+            -- Clean invalid components from queue
+            local valid_components = {}
+            for i = 1, #pending_audio_components do
+                local comp = pending_audio_components[i]
+                if comp and type(comp) == "userdata" then
+                    local is_valid_success, is_valid_result = pcall(function() return comp:IsValid() end)
+                    if is_valid_success and is_valid_result then
+                        table.insert(valid_components, comp)
+                    end
+                end
+            end
+            pending_audio_components = valid_components
+
+            -- Process UP TO 5 components per cycle for faster Boss detection
+            local process_count = math.min(5, #pending_audio_components)
+            for i = 1, process_count do
+                if #pending_audio_components > 0 then
+                    local ctx = table.remove(pending_audio_components, 1)
+                    if ctx and type(ctx) == "userdata" then
+                        local is_ctx_valid_success, is_ctx_valid = pcall(function() return ctx:IsValid() end)
+                        if is_ctx_valid_success and is_ctx_valid then
+                            local process_success, process_err = pcall(function()
+                                processBossAudioComponent(ctx)
+                            end)
+                            if not process_success then
+                                dprint("ERROR processing boss BGM component: " .. tostring(process_err))
+                            end
+                        end
+                    end
+                end
+            end
+        end)
+        if not task3_success then
+            dprint("ERROR Task 3 failed: " .. tostring(task3_err))
+        end
+    end
+    end)  -- End of MASTER LOOP pcall
+
+    if not loop_success then
+        dprint("CRITICAL ERROR: MASTER LOOP crashed - " .. tostring(loop_error))
+        print("[SBPod] CRITICAL ERROR: MASTER LOOP crashed - " .. tostring(loop_error))
+    end
+
+    return false
+end)
 
 function GetMapName()
     local map_name = "Unknown Map"
@@ -397,218 +845,66 @@ RegisterKeyBind(Key.DEL, function()
     end)
 end)
 
+-- Map transitions now handled by MASTER LOOP above
 
-local function controlBossBGM(ctx)
-    -- audio_component: component_name, cue_name, wave_name, boss_name_key
-    local audio_component = {}
-    local polling_interval = 1250 -- ms
-    -- local polling_interval = 3500 -- ms
-    -- local polling_interval = 6500 -- ms
-
-    LoopAsync(polling_interval, function()
-        if client_restart_triggered then
-            dprint("Stop bossBGM. Manual stop or client restart triggered")
-            audio_component = {}
-            current_boss_name = ""
-            is_boss_bgm_triggered = false
-            return true
-        end
-
-        if not ctx or not ctx:IsValid() or not ctx.Sound then return true end
-        -- dprint("Object type: " .. ctx:GetClass():GetFullName())
-
-        local cname = ctx:GetFullName()
-        if not string.find(cname, ":AudioComponent_") then return true end
-
-        if ctx:IsPlaying() then
-            audio_component["context"] = ctx
-            audio_component["component_name"] = ctx:GetFullName()
-            dprint("Component name: " .. audio_component["component_name"])
-
-            audio_component["cue_name"] = ctx.Sound and
-                ctx.Sound:GetClass():GetFullName() and
-                ctx.Sound:GetFullName() or
-                "Unknown Cue"
-            dprint("Cue name: " .. audio_component["cue_name"])
-
-            local sound_wave = ctx.Sound.FirstNode and
-                ctx.Sound.FirstNode.SoundWave or
-                nil
-            audio_component["wave_name"] = sound_wave and sound_wave:GetFullName() or "Unknown SoundWave"
-            dprint("Wave name: " .. audio_component["wave_name"])
-
-            -- Todo: Hard coding. remove and move to table var.
-            -- Check if this is system music (exclude from boss BGM detection)
-            local is_system_music = string.find(audio_component["cue_name"], "BGM_SYS_EPILOGUE_CUE")
-            local is_intro_music = string.find(audio_component["cue_name"], "BGM/Nest/BGM_") and
-                string.find(audio_component["wave_name"], "_INTRO")
-            if is_system_music or is_intro_music then return true end
-
-            dprint("current_boss_name: " .. current_boss_name)
-            dprint("#boss_bgm_names: " .. #boss_bgm_names)
-
-            -- Single SoundWave
-            local sound_name_key = "wave_name"
-            if audio_component["wave_name"] == "Unknown SoundWave" then
-                -- Multiple SoundWaves or VendingMachine or SoundNodeSwitch or Mixer or others
-                sound_name_key = "cue_name"
-            end
-
-            for k, boss_bgm_name in pairs(boss_bgm_names) do
-                -- audio_component["boss_name_key"] = text:Split(k, "_")[1]
-                if string.find(audio_component[sound_name_key], boss_bgm_name) and
-                    (
-                        current_boss_name == "" or
-                        text:Split(k, "_")[1] == current_boss_name or
-                        (current_boss_name and text:Split(k, "_")[1] == current_boss_name .. "Finish")
-                    ) then
-                    audio_component["boss_name_key"] = k
-                    break
-                end
-            end
-
-            if not audio_component["boss_name_key"] then
-                dprint("boss_name_key: nil")
-                return true
-            end
-
-            if audio_component["boss_name_key"] == "" then
-                dprint("boss_name_key is empty")
-                return true
-            end
-
-            dprint("boss_name_key: " .. audio_component["boss_name_key"])
-
-            audio_component["boss_name"] = string.gsub(audio_component["boss_name_key"], "_", " ")
-            -- audio_component["boss_name"] = audio_component["boss_name_key"]
-
-            dprint("SoundWave: " .. audio_component["wave_name"])
-            dprint("Wav/Cue: " .. audio_component["cue_name"])
-            dprint("- AudioComponent: " .. audio_component["component_name"])
-            dprint("- Boss name key: " .. audio_component["boss_name_key"])
-            dprint("- Boss name: " .. audio_component["boss_name"])
-            dprint("is_boss_bgm_triggered: " .. tostring(is_boss_bgm_triggered))
-
-            if not is_boss_bgm_triggered then
-                -- Play boss music
-
-                if string.find(audio_component["boss_name"], "Finish") then
-                    dprint("Boss music: finish")
-                    return true
-                end
-
-                local already_added = false
-                for i = 1, #boss_bgm_components do
-                    if boss_bgm_components[i]["component_name"] == audio_component["component_name"] then
-                        already_added = true
-                        break
-                    end
-                end
-                if not already_added then
-                    table.insert(boss_bgm_components, audio_component)
-                end
-
-                local fname = text:TrimSpace(music_files_boss[audio_component["boss_name"]])
-                dprint("Current music fname: " .. tostring(fname))
-
-                local boss_files = {}
-                if fname ~= "" then
-                    boss_files = { music_dirs["Boss"] .. "/" .. fname }
-                    dprint("Current music files: " .. #boss_files)
-                    for i = 1, #boss_files do
-                        dprint("#" .. i .. ": " .. boss_files[i])
-                    end
-                elseif #music_files["Boss"] > 0 then
-                    dprint("Boss music: random")
-                    boss_files = music_files["Boss"]
-                else
-                    dprint("No boss music")
-                    return true
-                end
-
-                is_boss_bgm_triggered = true
-                current_music_files = boss_files
-
-                current_boss_name = audio_component["boss_name"]
-                dprint("Current boss name: " .. current_boss_name)
-
-                -- Use safe transition instead of direct async call
-                safeMusicTransition(boss_files, 0)
-                return true
-            else
-                if not current_boss_name or current_boss_name == "" then return true end
-
-                dprint("Playing boss music: " .. current_boss_name)
-
-                -- Stop music by stage xxxFinish
-                if audio_component["boss_name"] == current_boss_name .. "Finish" then
-                    dprint("Stop boss music: " .. current_boss_name)
-
-                    is_boss_bgm_triggered = false
-                    current_music_files = previous_music_files
-
-                    boss_bgm_components = {}
-                    audio_component = {}
-                    current_boss_name = ""
-
-                    -- Use safe transition instead of direct async call
-                    safeMusicTransition(current_music_files, 0)
-
-                    return true
-                end
-
-                return false
-            end
-        end
-
-        return true
-    end)
-end
-
-if use_boss_bgm then
-    NotifyOnNewObject("/Script/Engine.AudioComponent", function(ctx)
-        if manual_stop or client_restart_triggered then return end
-        controlBossBGM(ctx)
-    end)
-end
-
-ExecuteWithDelay(5000, function()
+ExecuteWithDelay(250, function()
     RegisterHook("/Script/Engine.PlayerController:ClientRestart", function(ctx)
-        if manual_stop then return end
+        local hook_success, hook_error = pcall(function()
+            if manual_stop then return end
 
-        dprint("Engine.PlayerController:ClientRestart")
+            dprint("Engine.PlayerController:ClientRestart")
         client_restart_triggered = true
 
-        current_music_files = music_files["Default"]
+        -- Clear boss BGM state and queue
+        boss_bgm_notification_active = false  -- Deactivate on every map transition
+        pending_audio_components = {}
         boss_bgm_components = {}
+        current_boss_name = ""
+        is_boss_bgm_triggered = false
+        dprint("Cleared boss BGM queue and state, notification deactivated")
 
-        local mapName = ctx:get():GetFullName()
-        dprint("Current map name: " .. mapName)
+        current_music_files = music_files["Default"]
 
-        local stage_time_append = 1800
-        if string.find(mapName, "CH_P_EVE_01_Blueprint_C /Game/Lobby/Lobby.LOBBY") then
+        current_map = ctx:get():GetFullName()
+        -- current_map = GetMapName()
+        dprint("Current map name: " .. current_map)
+
+        -- local stage_time_append = 1800
+        local stage_time_append = 180
+        if string.find(current_map, "CH_P_EVE_01_Blueprint_C /Game/Lobby/Lobby.LOBBY") then
             dprint("Move to Lobby")
+            current_map_is_lobby = true  -- Disable Boss BGM in Lobby
+            boss_bgm_notification_active = false  -- Ensure deactivated in Lobby
             stage_time_append = 180
-        elseif string.find(mapName, "SBNetworkPlayerController /Game/Art/BG/WorldMap/") then
-            dprint("Move to WorldMap")
+        elseif string.find(current_map, "SBNetworkPlayerController /Game/Art/BG/WorldMap/") then
+            dprint("Move to WorldMap: " .. current_map)
+            current_map_is_lobby = false  -- Enable Boss BGM in WorldMap
         else
             dprint("Unknown map. retry")
-            mapName = GetMapName()
-            dprint("Retried map name: " .. mapName)
+            current_map = GetMapName()
+            -- current_map = ctx:get():GetFullName()
+            dprint("Retried map name: " .. current_map)
+            current_map_is_lobby = false  -- Default: enable Boss BGM
         end
 
         local music_files_default = GetMusicFiles(music_dirs["Default"])
         if #music_files_default > 0 then current_music_files = music_files_default end
 
+        dprint("Checking worldmap names for map: " .. current_map)
         for k, v in pairs(worldmap_names) do
             dprint("Worldmap key and name: " .. k .. ", " .. v)
-            if string.find(mapName, v) then
+            if string.find(current_map, v) then
+                dprint("Found matching worldmap: " .. k)
                 local music_files_worldmap = GetMusicFiles(music_dirs[k])
-                if #music_files_worldmap > 0 then current_music_files = music_files_worldmap end
+                if #music_files_worldmap > 0 then
+                    current_music_files = music_files_worldmap
+                    dprint("Set current_music_files to " .. k .. " with " .. #current_music_files .. " files")
+                end
                 break
             end
         end
 
+        dprint("Finished worldmap check. Total files: " .. #current_music_files)
         previous_music_files = current_music_files
         previous_music_index = 0
         current_music_index = 0
@@ -617,17 +913,31 @@ ExecuteWithDelay(5000, function()
         is_boss_bgm_triggered = false
 
         -- Use safe transition instead of direct async call
-        ExecuteAsync(function()
-            safeMusicTransition(current_music_files, stage_time_append)
+        dprint("Attempting to start music transition via ExecuteAsync")
+
+        if not ExecuteAsync then
+            dprint("ERROR: ExecuteAsync is not available!")
             client_restart_triggered = false
-        end)
+            return
+        end
+
+        -- Set pending transition instead of using ExecuteWithDelay
+        dprint("Setting pending map transition")
+        pending_map_transition = true
+        pending_transition_files = current_music_files
+        pending_transition_delay = stage_time_append
+        end)  -- End of pcall
+
+        if not hook_success then
+            dprint("ERROR ClientRestart hook failed: " .. tostring(hook_error))
+        end
     end)
 end)
 
 
 local function setupMod()
     audio.init()
-    audio.setEndCallback(onMusicEnded)
+    -- Note: Using LoopAsync for music end detection instead of callback
     music_files["Default"] = GetMusicFiles(music_dirs["Default"])
     music_files["Lobby"] = GetMusicFiles(music_dirs["Lobby"])
     music_files["Boss"] = GetMusicFiles(music_dirs["Boss"])
