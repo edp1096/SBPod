@@ -942,7 +942,8 @@ local function setupMod()
     music_files["Lobby"] = GetMusicFiles(music_dirs["Lobby"])
     music_files["Boss"] = GetMusicFiles(music_dirs["Boss"])
 
-    ExecuteWithDelay(180, function()
+    -- ExecuteWithDelay(180, function()
+    ExecuteWithDelay(1180, function()
         if #music_files["Lobby"] > 0 then
             dprint("Starting initial music playback")
             current_music_files = music_files["Lobby"]
