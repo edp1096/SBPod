@@ -847,7 +847,8 @@ end)
 
 -- Map transitions now handled by MASTER LOOP above
 
-ExecuteWithDelay(250, function()
+-- ExecuteWithDelay(250, function()
+ExecuteWithDelay(8250, function()
     RegisterHook("/Script/Engine.PlayerController:ClientRestart", function(ctx)
         local hook_success, hook_error = pcall(function()
             if manual_stop then return end
@@ -942,8 +943,8 @@ local function setupMod()
     music_files["Lobby"] = GetMusicFiles(music_dirs["Lobby"])
     music_files["Boss"] = GetMusicFiles(music_dirs["Boss"])
 
-    -- ExecuteWithDelay(180, function()
-    ExecuteWithDelay(1180, function()
+    -- ExecuteWithDelay(1180, function()
+    ExecuteWithDelay(2180, function()
         if #music_files["Lobby"] > 0 then
             dprint("Starting initial music playback")
             current_music_files = music_files["Lobby"]
